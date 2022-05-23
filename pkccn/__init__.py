@@ -12,14 +12,7 @@ class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
         if self.fit_classifier: # fit the base_classifier with noisy labels y_hat
             self.base_classifier.fit(X, y_hat)
         y_pred = self.base_classifier.predict_proba(X)[:,1]
-        if self.method == "default":
-            self.threshold = default_threshold(y_hat, y_pred, **self.method_args)
-        elif self.method == "menon":
-            self.threshold = menon_threshold(y_hat, y_pred, **self.method_args)
-        elif self.method == "mithal":
-            self.threshold = mithal_threshold(y_hat, y_pred, **self.method_args)
-        else:
-            raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
+        self.threshold = Threshold(self.method, **self.method_args)(y_hat, y_pred)
         return self
     def predict(self, X):
         return (self.base_classifier.predict_proba(X)[:,1] > self.threshold).astype(int) * 2 - 1
