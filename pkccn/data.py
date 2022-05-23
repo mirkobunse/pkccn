@@ -10,7 +10,10 @@ def inject_ccn(y, p_minus, p_plus, random_state=None):
     """
     if np.any(np.unique(y) != np.array([-1, 1])):
         raise ValueError(f"unique(y)={np.unique(y)} does not match [-1, 1]")
-    rng = np.random.RandomState(random_state) # reproducible random number generator
+    if random_state is None:
+        rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
+    else:
+        rng = np.random.RandomState(random_state) # local RNG with fixed seed
     y_hat = np.empty_like(y)
     y_hat[y==1] = rng.choice([-1, 1], size=np.sum(y==1), p=[p_plus, 1.0 - p_plus])
     y_hat[y==-1] = rng.choice([-1, 1], size=np.sum(y==-1), p=[1.0 - p_minus, p_minus])

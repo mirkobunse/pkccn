@@ -42,7 +42,7 @@ def main(
     # repeated stratified splitting
     results = []
     for trial, (i_trn, i_tst) in enumerate(StratifiedShuffleSplit(n_trials, test_size=.5).split(X, y)):
-        y_trn = inject_ccn(y[i_trn], p_minus, p_plus, random_state=trial)
+        y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
         y_pred_trn = cross_val_predict(clf, X[i_trn,:], y_trn, method="predict_proba", cv=n_folds)[:,1]
         clf.fit(X[i_trn,:], y_trn) # complete fit
         y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
