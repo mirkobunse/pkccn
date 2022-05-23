@@ -2,5 +2,6 @@
 /.eggs/
 /build/
 /dist/
+/results/
 /venv/
 /*.egg-info

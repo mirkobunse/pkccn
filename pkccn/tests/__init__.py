@@ -42,8 +42,8 @@ class TestThresholdedClassifier(TestCase):
         clf.fit(X_trn, y_trn)
         accuracy = clf.score(X_tst, y_tst)
         print(f"method=\"{method}\" achieves accuracy={accuracy}")
-    def test_none(self):
-        self.__test_method("none")
+    def test_default(self):
+        self.__test_method("default")
     def test_menon(self):
         self.__test_method("menon")
     def test_mithal(self):
