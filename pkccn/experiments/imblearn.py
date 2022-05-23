@@ -3,7 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 from imblearn.datasets import fetch_datasets
-from pkccn import default_threshold, menon_threshold, mithal_threshold
+from pkccn import Threshold
 from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
@@ -18,7 +18,7 @@ def main(
         n_trials = 10,
         n_folds = 5,
     ):
-    print(f"Starting an imblearn experiment to produce {output_path}")
+    print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
     np.random.seed(seed)
 
@@ -30,16 +30,25 @@ def main(
     # set up the base classifier
     clf = RandomForestClassifier(n_jobs=-1)
 
+    # configure the thresholding methods
+    methods = {
+        "Menon et al. (2015; CU-CCN; accuracy)": Threshold("menon"),
+        "Mithal et al. (2017; CU-CCN; G-measure)": Threshold("mithal"),
+        "Menon et al. (2015; PK-CCN; accuracy)": Threshold("menon", p_minus=p_minus),
+        "Menon et al. (2015; CK-CCN; accuracy)": Threshold("menon", p_minus=p_minus, p_plus=p_plus),
+        "default (accuracy)": Threshold("default", metric="accuracy"),
+    }
+
     # repeated stratified splitting
     results = []
     for trial, (i_trn, i_tst) in enumerate(StratifiedShuffleSplit(n_trials, test_size=.5).split(X, y)):
-        y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
+        y_trn = inject_ccn(y[i_trn], p_minus, p_plus, random_state=trial)
         y_pred_trn = cross_val_predict(clf, X[i_trn,:], y_trn, method="predict_proba", cv=n_folds)[:,1]
         clf.fit(X[i_trn,:], y_trn) # complete fit
         y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
 
         # use the current model with all thresholding methods
-        for method_name, method in {"default": default_threshold, "menon": menon_threshold, "mithal": mithal_threshold}.items():
+        for method_name, method in methods.items():
             threshold = method(y_trn, y_pred_trn)
             y_pred = (y_pred_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
             results.append({
@@ -50,8 +59,16 @@ def main(
                 "f1": f1_score(y[i_tst], y_pred),
             })
 
-    # store results
+    # aggregate and store the results
     df = pd.DataFrame(results)
+    df = df.groupby("method", sort=False).agg(
+        threshold = ("threshold", "mean"),
+        threshold_std = ("threshold", "std"),
+        accuracy = ("accuracy", "mean"),
+        accuracy_std = ("accuracy", "std"),
+        f1 = ("f1", "mean"),
+        f1_std = ("f1", "std"),
+    )
     df['dataset'] = dataset
     df['p_minus'] = p_minus
     df['p_plus'] = p_plus

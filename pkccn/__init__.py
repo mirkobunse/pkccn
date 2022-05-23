@@ -24,6 +24,20 @@ class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
     def predict(self, X):
         return (self.base_classifier.predict_proba(X)[:,1] > self.threshold).astype(int) * 2 - 1
 
+class Threshold:
+    def __init__(self, method, **method_args):
+        self.method = method
+        self.method_args = method_args
+    def __call__(self, y_hat, y_pred):
+        if self.method == "default":
+            return default_threshold(y_hat, y_pred, **self.method_args)
+        elif self.method == "menon":
+            return menon_threshold(y_hat, y_pred, **self.method_args)
+        elif self.method == "mithal":
+            return mithal_threshold(y_hat, y_pred, **self.method_args)
+        else:
+            raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
+
 def default_threshold(y_hat, y_pred, metric="accuracy"):
     """Determine the default threshold for a given metric, e.g. 0.5 for accuracy."""
     if metric == "accuracy":

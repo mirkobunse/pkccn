@@ -1,7 +1,7 @@
 # experiments
 experiments: results/imblearn_yeast_natarajanHigh.csv
 
-results/imblearn_yeast_natarajanHigh.csv: venv/.EXPERIMENTS
+results/imblearn_yeast_natarajanHigh.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ yeast_ml8 0.4 0.4
 
 # virtual environment
