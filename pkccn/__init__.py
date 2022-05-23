@@ -38,14 +38,21 @@ class Threshold:
         else:
             raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
 
-def default_threshold(y_hat, y_pred, metric="accuracy"):
+def default_threshold(y_hat, y_pred, metric="accuracy", verbose=False):
     """Determine the default threshold for a given metric, e.g. 0.5 for accuracy."""
     if metric == "accuracy":
-        return 0.5
+        threshold = 0.5
     elif metric == "f1":
         raise ValueError("f1 not yet implemented") # TODO
     else:
         raise ValueError(f"metric=\"{metric}\" not in [\"accuracy\", \"f1\"]")
+    if verbose:
+        print(
+            f"┌ default_threshold={threshold}",
+            f"└─ metric={metric}",
+            sep="\n"
+        )
+    return threshold
 
 def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], verbose=False, p_minus=None, p_plus=None):
     """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
