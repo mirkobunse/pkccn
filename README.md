@@ -8,7 +8,7 @@ pip install git+https://github.com/mirkobunse/pkccn
 
 ## Usage
 
-To make any soft classifier from [scikit-learn](https://scikit-learn.org/stable/) CCN-aware, you only need to create an instance of the type `pkccn.ThresholdedClassifier`.
+To make any soft classifier from [scikit-learn](https://scikit-learn.org/stable/) CCN-aware, you only need to create a `ThresholdedClassifier`.
 
 ```python
 from pkccn import ThresholdedClassifier
