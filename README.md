@@ -1,4 +1,6 @@
-# pkccn - Algorithms for learning under partially-known class-conditional label noise
+[![CI](https://github.com/mirkobunse/pkccn/actions/workflows/ci.yml/badge.svg)](https://github.com/mirkobunse/pkccn/actions/workflows/ci.yml)
+
+# pkccn
 
 This package implements algorithms for handling class-conditional label noise, also in cases where the class-wise noise rates are (partially) known.
 
@@ -25,7 +27,7 @@ y_pred = ccn_classifier.predict(X_test)
 
 ## Development / unit testing
 
-During development, run tests with the `unittest` package.
+During development, run tests locally with the `unittest` package.
 
 ```
 python -m venv venv
