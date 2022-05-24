@@ -51,6 +51,16 @@ class TestThresholdedClassifier(TestCase):
         self.__test_method("default")
     def test_menon(self):
         self.__test_method("menon")
+    def test_pkccn_menon(self):
+        self.__test_method(
+            "menon",
+            method_args = {"p_minus": .5}
+        )
+    def test_ckccn_menon(self):
+        self.__test_method(
+            "menon",
+            method_args = {"p_minus": .5, "p_plus": .1}
+        )
     def test_mithal(self):
         self.__test_method(
             "mithal",
