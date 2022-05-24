@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 import os
 import pandas as pd
+from datetime import datetime
 from imblearn.datasets import fetch_datasets
 from pkccn import Threshold
 from pkccn.data import inject_ccn
@@ -11,7 +12,6 @@ from sklearn.model_selection import cross_val_predict, StratifiedShuffleSplit
 
 def main(
         output_path,
-        dataset,
         p_minus,
         p_plus,
         seed = 867,
@@ -22,14 +22,6 @@ def main(
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
     np.random.seed(seed)
 
-    # read the data
-    imblearn_dataset = fetch_datasets()[dataset]
-    X = imblearn_dataset.data
-    y = imblearn_dataset.target
-
-    # set up the base classifier
-    clf = RandomForestClassifier(n_jobs=-1)
-
     # configure the thresholding methods
     methods = {
         "Menon et al. (2015; CU-CCN; accuracy)": Threshold("menon"),
@@ -39,29 +31,71 @@ def main(
         "default (accuracy)": Threshold("default", metric="accuracy"),
     }
 
-    # repeated stratified splitting
-    results = []
-    for trial, (i_trn, i_tst) in enumerate(StratifiedShuffleSplit(n_trials, test_size=.5).split(X, y)):
-        y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
-        y_pred_trn = cross_val_predict(clf, X[i_trn,:], y_trn, method="predict_proba", cv=n_folds)[:,1]
-        clf.fit(X[i_trn,:], y_trn) # complete fit
-        y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
+    # these imblearn data sets have at least 100 instances in the minority class
+    datasets = [
+        "coil_2000",
+        "satimage",
+        "letter_img",
+        "pen_digits",
+        "protein_homo",
+        "optical_digits",
+        "thyroid_sick",
+        "sick_euthyroid",
+        "mammography",
+        "abalone",
+        "wine_quality",
+        "us_crime",
+        "car_eval_34",
+        "webpage",
+        "isolet",
+        "yeast_ml8",
+        "scene"
+    ]
 
-        # use the current model with all thresholding methods
-        for method_name, method in methods.items():
-            threshold = method(y_trn, y_pred_trn)
-            y_pred = (y_pred_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
-            results.append({
-                "method": method_name,
-                "trial": trial,
-                "threshold": threshold,
-                "accuracy": accuracy_score(y[i_tst], y_pred),
-                "f1": f1_score(y[i_tst], y_pred),
-            })
+    # set up the base classifier
+    clf = RandomForestClassifier(n_jobs=-1)
+
+    # iterate over all data sets
+    results = []
+    for i_dataset, dataset in enumerate(datasets):
+        print(
+            f"[{i_dataset+1}/{len(datasets)}; {datetime.now().strftime('%H:%M:%S')}]",
+            f"Evaluating on {dataset}"
+        )
+        imblearn_dataset = fetch_datasets()[dataset]
+        X = imblearn_dataset.data
+        y = imblearn_dataset.target
+
+        # repeated stratified splitting
+        splits = StratifiedShuffleSplit(n_trials, test_size=.5).split(X, y)
+        for i_trial, (i_trn, i_tst) in enumerate(splits):
+            y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
+            y_pred_trn = cross_val_predict(
+                clf,
+                X[i_trn,:],
+                y_trn,
+                method = "predict_proba",
+                cv = n_folds
+            )[:,1] # out-of-bag soft predictions
+            clf.fit(X[i_trn,:], y_trn) # complete fit
+            y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
+
+            # use the current model with all thresholding methods
+            for method_name, method in methods.items():
+                threshold = method(y_trn, y_pred_trn)
+                y_pred = (y_pred_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
+                results.append({
+                    "dataset": dataset,
+                    "method": method_name,
+                    "trial": i_trial,
+                    "threshold": threshold,
+                    "accuracy": accuracy_score(y[i_tst], y_pred),
+                    "f1": f1_score(y[i_tst], y_pred),
+                })
 
     # aggregate and store the results
     df = pd.DataFrame(results)
-    df = df.groupby("method", sort=False).agg(
+    df = df.groupby(["dataset", "method"], sort=False).agg(
         threshold = ("threshold", "mean"),
         threshold_std = ("threshold", "std"),
         accuracy = ("accuracy", "mean"),
@@ -78,7 +112,6 @@ def main(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('output_path', type=str, help='path of an output *.csv file')
-    parser.add_argument('dataset', type=str, help='name of an imblearn data set')
     parser.add_argument('p_minus', type=float, help='noise rate of the negative class')
     parser.add_argument('p_plus', type=float, help='noise rate of the positive class')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
@@ -90,7 +123,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(
         args.output_path,
-        args.dataset,
         args.p_minus,
         args.p_plus,
         args.seed,
