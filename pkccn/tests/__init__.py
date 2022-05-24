@@ -30,21 +30,29 @@ class TestData(TestCase):
         self.assertTrue((y_hat1 != y_hat2).any()) # not equal
 
 class TestThresholdedClassifier(TestCase):
-    def __test_method(self, method, p_minus=.5, p_plus=.1):
+    def __test_method(self, method, p_minus=.5, p_plus=.1, method_args={}):
         print() # empty line to go beyond a leading "."
         X_trn, X_tst, y_trn, y_tst = fetch_data()
         y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
         clf = ThresholdedClassifier(
             LogisticRegression(random_state=RANDOM_STATE),
             method,
-            method_args = {"verbose": True}
+            method_args = {"verbose": True, **method_args}
         )
         clf.fit(X_trn, y_trn)
         accuracy = clf.score(X_tst, y_tst)
         print(f"method=\"{method}\" achieves accuracy={accuracy}")
+    def test_lima(self):
+        self.__test_method(
+            "lima",
+            method_args = {"random_state": RANDOM_STATE, "p_minus": .5}
+        )
     def test_default(self):
         self.__test_method("default")
     def test_menon(self):
         self.__test_method("menon")
     def test_mithal(self):
-        self.__test_method("mithal")
+        self.__test_method(
+            "mithal",
+            method_args = {"random_state": RANDOM_STATE}
+        )

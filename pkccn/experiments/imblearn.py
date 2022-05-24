@@ -24,10 +24,11 @@ def main(
 
     # configure the thresholding methods
     methods = {
-        "Menon et al. (2015; CU-CCN; accuracy)": Threshold("menon"),
-        "Mithal et al. (2017; CU-CCN; G-measure)": Threshold("mithal"),
+        "Li \& Ma threshold (ours; PK-CCN)": Threshold("lima", p_minus=p_minus),
         "Menon et al. (2015; PK-CCN; accuracy)": Threshold("menon", p_minus=p_minus),
         "Menon et al. (2015; CK-CCN; accuracy)": Threshold("menon", p_minus=p_minus, p_plus=p_plus),
+        "Menon et al. (2015; CU-CCN; accuracy)": Threshold("menon"),
+        "Mithal et al. (2017; CU-CCN; G-measure)": Threshold("mithal"),
         "default (accuracy)": Threshold("default", metric="accuracy"),
     }
 

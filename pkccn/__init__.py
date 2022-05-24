@@ -22,7 +22,9 @@ class Threshold:
         self.method = method
         self.method_args = method_args
     def __call__(self, y_hat, y_pred):
-        if self.method == "default":
+        if self.method == "lima":
+            return lima_threshold(y_hat, y_pred, **self.method_args)
+        elif self.method == "default":
             return default_threshold(y_hat, y_pred, **self.method_args)
         elif self.method == "menon":
             return menon_threshold(y_hat, y_pred, **self.method_args)
@@ -31,8 +33,67 @@ class Threshold:
         else:
             raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
 
+def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, verbose=False):
+    """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
+
+    :param y_hat: an array of noisy labels, shape (n,)
+    :param y_pred: an array of soft predictions, shape (n,)
+    :param p_minus: required noise rate, defaults to None
+    :param n_trials: number of trials for the numerical optimization, defaults to 100
+    :param random_state: optional seed for reproducibility, defaults to None
+    :param verbose: whether additional information should be logged, defaults to False
+    :return: a decision threshold
+    """
+    if p_minus is None:
+        raise ValueError("p_minus is not allowed to be None")
+
+    # optimize
+    alpha = p_minus / (1 - p_minus)
+    threshold, value, is_success = __minimize(
+        __lima_objective,
+        n_trials,
+        random_state,
+        args = (y_hat, y_pred, alpha)
+    )
+
+    # log and return
+    if not is_success:
+        print(f"WARNING: optimization in lima_threshold was not successful")
+    if verbose:
+        print(
+            f"┌ lima_threshold={threshold}",
+            f"└┬ p_minus={p_minus}",
+            f" └ lima_value={-value}",
+            sep="\n"
+        )
+    return threshold
+
+def __lima_objective(threshold, y_hat, y_pred, alpha):
+    """Objective function for lima_threshold."""
+    y_hat = y_hat[y_pred >= threshold] # y_hat is in [-1, 1]
+    N = len(y_hat) # N_plus + N_minus
+    N_plus = np.sum(y_hat == 1)
+    N_minus = N - N_plus
+    if N_plus < alpha * N_minus:
+        return 0.
+    with np.errstate(divide='ignore', invalid='ignore'):
+        f = np.sqrt(
+            2 * N_plus * np.log(((1 + alpha) / alpha) * N_plus / N)
+            + 2 * N_minus * np.log((1 + alpha) * N_minus / N)
+        )
+    if not np.isfinite(f):
+        return 0.
+    return -f # maximize the function value
+
 def default_threshold(y_hat, y_pred, metric="accuracy", verbose=False):
-    """Determine the default threshold for a given metric, e.g. 0.5 for accuracy."""
+    """Determine the default threshold for a given metric, e.g. 0.5 for accuracy.
+
+    :param y_hat: an array of noisy labels, shape (n,)
+    :param y_pred: an array of soft predictions, shape (m,)
+    :param metric: the metric to optimize, defaults to "accuracy"
+    :param verbose: whether additional information should be logged, defaults to False
+    :return: a decision threshold
+    """
     if metric == "accuracy":
         threshold = 0.5
     elif metric == "f1":
@@ -103,7 +164,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], verb
         )
     return threshold
 
-def mithal_threshold(y_hat, y_pred, quantile=.05, verbose=False, n_trials=100):
+def mithal_threshold(y_hat, y_pred, quantile=.05, n_trials=100, random_state=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
 
     Mithal et al. (2017): RAPT: Rare Class Prediction in Absence of True Labels.
@@ -111,8 +172,9 @@ def mithal_threshold(y_hat, y_pred, quantile=.05, verbose=False, n_trials=100):
     :param y_hat: an array of noisy labels, shape (n,)
     :param y_pred: an array of soft predictions, shape (n,)
     :param quantile: the quantile of y_pred, defaults to .05
-    :param verbose: whether additional information should be logged, defaults to False
     :param n_trials: number of trials for the numerical optimization, defaults to 100
+    :param random_state: optional seed for reproducibility, defaults to None
+    :param verbose: whether additional information should be logged, defaults to False
     :return: a decision threshold
     """
     if len(y_hat) != len(y_pred): # argument check
@@ -122,29 +184,56 @@ def mithal_threshold(y_hat, y_pred, quantile=.05, verbose=False, n_trials=100):
     is_perfectly_neg = y_pred <= np.quantile(y_pred, quantile) # perfectly negative examples = bottom 5%
     beta = np.mean(y_hat[is_perfectly_neg]) # fraction of noisy-positive samples in the bottom 5%
 
+
     # choose the threshold, see page 2489 (left column bottom) in [mithal2017rapt]
-    def objective(gamma):
-        P_g = np.mean(y_pred > gamma) # P(g(x) > gamma)
-        if P_g == 0.0:
-            return 0.0 # this case would otherwise result in a NaN outcome
-        P_a = np.mean(y_hat[y_pred > gamma]) # P(a = 1 | g(x) > gamma)
-        obj = (P_a - beta)**2 * P_g
-        return - obj # maximize obj
-    best_res = optimize.minimize_scalar(objective, method="Bounded", bounds=(0., 1.))
-    for _ in range(n_trials-1):
-        res = optimize.minimize(objective, np.random.rand(), bounds=((0.0,1.0),))
-        if res.success and (best_res is None or not best_res.success or best_res.fun > res.fun):
-            best_res = res
-    threshold = np.array(best_res.x).item() # safely convert best_res.x to a scalar
+    threshold, value, is_success = __minimize(
+        __mithal_objective,
+        n_trials,
+        random_state,
+        args = (y_hat, y_pred, beta)
+    )
 
     # log and return
-    if not best_res.success:
+    if not is_success:
         print(f"WARNING: optimization in mithal_threshold was not successful")
     if verbose:
         print(
             f"┌ mithal_threshold={threshold}",
             f"└┬ beta={beta}",
-            f" └ fun={-best_res.fun}, nfev={best_res.nfev}",
+            f" └ objective_value={-value}",
             sep="\n"
         )
     return threshold
+
+def __mithal_objective(gamma, y_hat, y_pred, beta):
+    """Objective function for mithal_threshold."""
+    P_g = np.mean(y_pred > gamma) # P(g(x) > gamma)
+    if P_g == 0.0:
+        return 0.0 # this case would otherwise result in a NaN outcome
+    P_a = np.mean(y_hat[y_pred > gamma]) # P(a = 1 | g(x) > gamma)
+    f = (P_a - beta)**2 * P_g
+    return - f # maximize the function value
+
+def __minimize(objective, n_trials=100, random_state=None, args=None):
+    """Generic multi-start minimization of an objective function for thresholding."""
+    if random_state is None:
+        rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
+    else:
+        rng = np.random.RandomState(random_state) # local RNG with fixed seed
+    best = optimize.minimize_scalar(
+        objective,
+        bounds = (0.0, 1.0),
+        method = "bounded",
+        args = args
+    ) # minimize_scalar is the best approach if only one local minimum exists
+    for _ in range(n_trials-1):
+        current = optimize.minimize(
+            objective,
+            rng.rand(), # random starting point
+            bounds = ((0.0,1.0),),
+            args = args
+        ) # otherwise, we need multi-start optimization with minimize
+        if current.success and (best is None or not best.success or best.fun > current.fun):
+            best = current
+    threshold = np.array(best.x).item() # safely convert best.x to a scalar
+    return (threshold, best.fun, best.success)
