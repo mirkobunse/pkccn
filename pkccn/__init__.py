@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import optimize
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.metrics import recall_score
 
 class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, base_classifier, method, fit_classifier=True, method_args={}):
@@ -85,7 +86,7 @@ def __lima_objective(threshold, y_hat, y_pred, alpha):
         return 0.
     return -f # maximize the function value
 
-def default_threshold(y_hat, y_pred, metric="accuracy", verbose=False):
+def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_state=None, verbose=False):
     """Determine the default threshold for a given metric, e.g. 0.5 for accuracy.
 
     :param y_hat: an array of noisy labels, shape (n,)
@@ -96,8 +97,24 @@ def default_threshold(y_hat, y_pred, metric="accuracy", verbose=False):
     """
     if metric == "accuracy":
         threshold = 0.5
-    elif metric == "f1":
-        raise ValueError("f1 not yet implemented") # TODO
+    elif metric == "f1": # no closed-form solution; optimization is necessary
+        p = np.sum(y_hat == 1) / len(y_hat) # class 1 prevalence
+        threshold, value, is_success = __minimize(
+            __f1_objective,
+            n_trials,
+            random_state,
+            args = (y_hat, y_pred, p)
+        )
+        if not is_success:
+            print(f"WARNING: f1 optimization in default_threshold was not successful")
+        if verbose:
+            print(
+                f"┌ default_threshold={threshold}",
+                f"└┬ p={p}",
+                f" └ f1={-value}",
+                sep="\n"
+            )
+        return threshold
     else:
         raise ValueError(f"metric=\"{metric}\" not in [\"accuracy\", \"f1\"]")
     if verbose:
@@ -107,6 +124,14 @@ def default_threshold(y_hat, y_pred, metric="accuracy", verbose=False):
             sep="\n"
         )
     return threshold
+
+def __f1_objective(threshold, y_hat, y_pred, p):
+    """Objective function for default_threshold with metric="f1"."""
+    y_pred = (y_pred > threshold).astype(int) * 2 - 1
+    u = recall_score(y_hat, y_pred, pos_label=1) # u = TPR
+    v = recall_score(y_hat, y_pred, pos_label=-1) # v = TNR
+    f = 2 * p * u / (p + (p*u + (1-p)*(1-v))) # Tab. 1 in [narasimhan2014statistical]
+    return -f # maximize the function value
 
 def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], verbose=False, p_minus=None, p_plus=None):
     """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
