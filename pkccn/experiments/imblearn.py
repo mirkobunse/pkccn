@@ -9,6 +9,7 @@ from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
+from tqdm.auto import tqdm
 
 def main(
         output_path,
@@ -70,21 +71,23 @@ def main(
     # set up the base classifier and the repeated cross validation splitter
     clf = RandomForestClassifier(n_jobs=-1)
     rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
-    print(f"Each data set meets {len(methods)} methods * {rskf.get_n_splits()} trials")
+    print(f"Each of the {rskf.get_n_splits()} trials evaluates {len(methods)} methods")
 
     # iterate over all data sets
     results = []
     for i_dataset, dataset in enumerate(datasets):
-        print(
-            f"[{i_dataset+1}/{len(datasets)}; {datetime.now().strftime('%H:%M:%S')}]",
-            f"Evaluating on {dataset}"
-        )
         imblearn_dataset = fetch_datasets()[dataset]
         X = imblearn_dataset.data
         y = imblearn_dataset.target
 
         # repeated stratified splitting
-        for i_trial, (i_trn, i_tst) in enumerate(rskf.split(X, y)):
+        progressbar = tqdm(
+            enumerate(rskf.split(X, y)),
+            desc = f"{dataset} [{i_dataset+1}/{len(datasets)}]",
+            total = rskf.get_n_splits(),
+            ncols = 80
+        )
+        for i_trial, (i_trn, i_tst) in progressbar:
             y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
             y_pred_trn = cross_val_predict(
                 clf,

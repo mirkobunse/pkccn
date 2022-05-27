@@ -20,7 +20,7 @@ results/imblearn_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imbl
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.3 0.1
 
 # virtual environment
-venv/.EXPERIMENTS: venv/bin/pip
+venv/.EXPERIMENTS: venv/bin/pip setup.py
 	venv/bin/pip install .[experiments] && touch $@
 venv/bin/pip:
 	python -m venv venv
