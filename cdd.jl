@@ -21,7 +21,7 @@ end
 
 """Main function."""
 function main(args = parse_commandline())
-    @info "Generating plots from $(length(args["input"])) input files" args["tex"] args["pdf"] args["csv"] args["input"]
+    @info "Generating plots from $(length(args["input"])) input files" args["tex"] args["pdf"] args["input"]
 
     # collect results of all input CSV files
     sequence = Pair{String, Vector{Pair{String, Vector}}}[] # sequence of CD diagrams
