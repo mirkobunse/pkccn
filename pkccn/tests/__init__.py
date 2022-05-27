@@ -34,15 +34,32 @@ class TestData(TestCase):
 class TestObjectives(TestCase):
     def test_f1_objective(self):
         rng = np.random.RandomState(RANDOM_STATE)
-        y_true = rng.choice([-1, 1], size=1000, p=[.8, .2])
+        y_true = rng.choice([-1, 1], size=100000, p=[.8, .2])
         p = np.sum(y_true == 1) / len(y_true) # class 1 prevalence
-        y_pred = rng.rand(1000) * y_true + rng.randn(1000) * .5 # synthetic predictions
+        y_pred = rng.rand(100000) * y_true + rng.randn(100000) * .5 # synthetic predictions
         y_pred = (y_pred - np.min(y_pred)) / (np.max(y_pred) - np.min(y_pred))
-        for threshold in rng.rand(100):
+
+        y_hat = inject_ccn(y_true, .5, .1, random_state=RANDOM_STATE) # CCN noise
+        p_plus = np.sum((y_hat == -1) & (y_true == 1)) / np.sum(y_true == 1)
+        p_minus = np.sum((y_hat == 1) & (y_true == -1)) / np.sum(y_true == -1)
+        # print(f"p_+={p_plus}, p_-={p_minus}")
+
+        for threshold in rng.rand(20):
             y_threshold = (y_pred > threshold).astype(int) * 2 - 1
             theirs = f1_score(y_true, y_threshold)
             ours = - __f1_objective(threshold, y_true, y_pred, p)
-            self.assertAlmostEqual(theirs, ours)
+            self.assertAlmostEqual(theirs, ours) # clean labels
+
+            # see menon_threshold
+            pi_corr = sum(y_hat == 1) / len(y_hat)
+            eta_min = p_minus
+            eta_max = 1.0 - p_plus
+            pi = (pi_corr - eta_min) / (eta_max - eta_min)
+            self.assertAlmostEqual(p, pi) # true vs reconstructed clean class 1 prevalence
+            alpha = (eta_min * (eta_max - pi_corr)) / (pi_corr * (eta_max - eta_min))
+            beta = ((1 - eta_max) * (pi_corr - eta_min)) / ((1 - pi_corr) * (eta_max - eta_min))
+            menon = - __f1_objective(threshold, y_hat, y_pred, pi, alpha, beta)
+            self.assertAlmostEqual(ours, menon, delta=.05) # noisy labels
 
 class TestOptimizations(TestCase):
     def test_f1_optimization(self):

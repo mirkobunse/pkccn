@@ -130,12 +130,9 @@ def __f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
     y_pred = (y_pred > threshold).astype(int) * 2 - 1
     u = recall_score(y_hat, y_pred, pos_label=1) # u = TPR
     v = recall_score(y_hat, y_pred, pos_label=-1) # v = TNR
-    if alpha is not None or beta is not None:
-        A = np.array([[1-beta, -beta], [-alpha, 1-alpha]])
-        y = 1 - np.array([v + beta, u + alpha]) # y = (FPR_corr - beta, FNR_corr - alpha)
-        x = np.matmul(np.linalg.inv(A), y) # Sec. 5.2 in [menon2015learning]
-        u = 1 - x[1] # clean TPR = 1 - clean FNR
-        v = 1 - x[0] # clean TNR = 1 - clean FPR
+    if alpha is not None or beta is not None: # Sec. A.3 in [menon2015learning]
+        v = 1 - ((1-alpha)*(1-v) + beta*(1-u) - beta) / (1-alpha-beta)
+        u = 1 - (alpha*(1-v) + (1-beta)*(1-u) - alpha) / (1-alpha-beta)
     f = 2 * p * u / (p + (p*u + (1-p)*(1-v))) # Tab. 1 in [narasimhan2014statistical]
     return -f # maximize the function value
 
