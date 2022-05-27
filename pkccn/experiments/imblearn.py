@@ -8,16 +8,15 @@ from pkccn import Threshold
 from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.model_selection import cross_val_predict, StratifiedShuffleSplit
+from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
 
 def main(
         output_path,
         p_minus,
         p_plus,
         seed = 867,
-        n_trials = 10,
-        n_folds = 5,
-        test_size = .5,
+        n_folds = 10,
+        n_repetitions = 10,
     ):
     print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
@@ -68,8 +67,10 @@ def main(
         "scene"
     ]
 
-    # set up the base classifier
+    # set up the base classifier and the repeated cross validation splitter
     clf = RandomForestClassifier(n_jobs=-1)
+    rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
+    print(f"Each data set meets {len(methods)} methods * {rskf.get_n_splits()} trials")
 
     # iterate over all data sets
     results = []
@@ -83,15 +84,14 @@ def main(
         y = imblearn_dataset.target
 
         # repeated stratified splitting
-        splits = StratifiedShuffleSplit(n_trials, test_size=test_size).split(X, y)
-        for i_trial, (i_trn, i_tst) in enumerate(splits):
+        for i_trial, (i_trn, i_tst) in enumerate(rskf.split(X, y)):
             y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
             y_pred_trn = cross_val_predict(
                 clf,
                 X[i_trn,:],
                 y_trn,
                 method = "predict_proba",
-                cv = n_folds
+                cv = 5
             )[:,1] # out-of-bag soft predictions
             clf.fit(X[i_trn,:], y_trn) # complete fit
             y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
@@ -132,19 +132,16 @@ if __name__ == '__main__':
     parser.add_argument('p_plus', type=float, help='noise rate of the positive class')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
                         help='random number generator seed (default: 876)')
-    parser.add_argument('--n_trials', type=int, default=10, metavar='N',
-                        help='number of trials (default: 10)')
-    parser.add_argument('--n_folds', type=int, default=5, metavar='N',
-                        help='number of cross validation folds (default: 5)')
-    parser.add_argument('--test_size', type=float, default=.5,
-                        help='fractional size of the test sets (default: 0.5)')
+    parser.add_argument('--n_folds', type=int, default=10, metavar='N',
+                        help='number of cross validation folds (default: 10)')
+    parser.add_argument('--n_repetitions', type=int, default=10, metavar='N',
+                        help='number of repetitions of the cross validation (default: 10)')
     args = parser.parse_args()
     main(
         args.output_path,
         args.p_minus,
         args.p_plus,
         args.seed,
-        args.n_trials,
         args.n_folds,
-        args.test_size
+        args.n_repetitions,
     )
