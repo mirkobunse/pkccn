@@ -70,8 +70,18 @@ class TestThresholdedClassifier(TestCase):
             "default",
             method_args = {"metric": "f1"}
         )
-    def test_menon(self):
+    def test_menon_accuracy(self):
         self.__test_method("menon")
+    def test_menon_f1(self):
+        self.__test_method(
+            "menon",
+            method_args = {"metric": "f1"}
+        )
+    def test_ckccn_menon_f1(self):
+        self.__test_method(
+            "menon",
+            method_args = {"metric": "f1", "p_minus": .5, "p_plus": .1}
+        )
     def test_pkccn_menon(self):
         self.__test_method(
             "menon",

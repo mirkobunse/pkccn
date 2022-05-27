@@ -125,15 +125,21 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
         )
     return threshold
 
-def __f1_objective(threshold, y_hat, y_pred, p):
+def __f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
     """Objective function for default_threshold with metric="f1"."""
     y_pred = (y_pred > threshold).astype(int) * 2 - 1
     u = recall_score(y_hat, y_pred, pos_label=1) # u = TPR
     v = recall_score(y_hat, y_pred, pos_label=-1) # v = TNR
+    if alpha is not None or beta is not None:
+        A = np.array([[1-beta, -beta], [-alpha, 1-alpha]])
+        y = 1 - np.array([v + beta, u + alpha]) # y = (FPR_corr - beta, FNR_corr - alpha)
+        x = np.matmul(np.linalg.inv(A), y) # Sec. 5.2 in [menon2015learning]
+        u = 1 - x[1] # clean TPR = 1 - clean FNR
+        v = 1 - x[0] # clean TNR = 1 - clean FPR
     f = 2 * p * u / (p + (p*u + (1-p)*(1-v))) # Tab. 1 in [narasimhan2014statistical]
     return -f # maximize the function value
 
-def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], verbose=False, p_minus=None, p_plus=None):
+def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_trials=100, random_state=None, p_minus=None, p_plus=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
 
     Menon et al. (2015): Learning from Corrupted Binary Labels via Class-Probability Estimation.
@@ -171,8 +177,15 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], verb
             ((1-alpha) * (1-pi)/pi + alpha) /
             (beta * (1-pi)/pi + (1-beta))
         )
-    elif metric == "f1":
-        raise ValueError("f1 not yet implemented") # TODO
+    elif metric == "f1": # no closed-form solution; optimization is necessary
+        threshold, value, is_success = __minimize(
+            __f1_objective,
+            n_trials,
+            random_state,
+            args = (y_hat, y_pred, pi, alpha, beta)
+        )
+        if not is_success:
+            print(f"WARNING: f1 optimization in menon_threshold was not successful")
     else:
         raise ValueError(f"metric=\"{metric}\" not in [\"accuracy\", \"f1\"]")
 
