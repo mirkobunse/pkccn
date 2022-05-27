@@ -252,7 +252,7 @@ def __mithal_objective(gamma, y_hat, y_pred, beta):
     f = (P_a - beta)**2 * P_g
     return - f # maximize the function value
 
-def __minimize(objective, n_trials=100, random_state=None, args=None):
+def __minimize(objective, n_trials, random_state, args=None):
     """Generic multi-start minimization of an objective function for thresholding."""
     if random_state is None:
         rng = np.random.random.__self__ # global RNG, seeded by np.random.seed

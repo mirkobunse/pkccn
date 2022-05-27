@@ -1,7 +1,7 @@
 import numpy as np
 from imblearn.datasets import fetch_datasets
 from pkccn import __f1_objective as _TestObjectives__f1_objective # unittest name mangling
-from pkccn import ThresholdedClassifier
+from pkccn import Threshold, ThresholdedClassifier
 from pkccn.data import inject_ccn
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, recall_score
@@ -43,6 +43,25 @@ class TestObjectives(TestCase):
             theirs = f1_score(y_true, y_threshold)
             ours = - __f1_objective(threshold, y_true, y_pred, p)
             self.assertAlmostEqual(theirs, ours)
+
+class TestOptimizations(TestCase):
+    def test_f1_optimization(self):
+        rng = np.random.RandomState(RANDOM_STATE)
+        for p in rng.rand(10):
+            y_true = rng.choice([-1, 1], size=1000, p=[p, 1-p])
+            y_pred = rng.rand(1000) * y_true + rng.randn(1000) * .5 # synthetic predictions
+            y_pred = (y_pred - np.min(y_pred)) / (np.max(y_pred) - np.min(y_pred))
+
+            # find the optimal threshold via grid search (inefficient)
+            T = np.arange(0.001, 1., step=.001) # threshold grid
+            f1_T = np.array([f1_score(y_true, (y_pred > t).astype(int) * 2 - 1) for t in T])
+            best_i = np.argmin(f1_T) # index of best threshold / F1 score
+
+            # compare with a numerically optimized threshold (efficient)
+            t = Threshold("default", metric="f1")(y_true, y_pred)
+            f1_t = f1_score(y_true, (y_pred > t).astype(int) * 2 - 1)
+            if f1_T[best_i] > f1_t:
+                self.assertAlmostEqual(f1_T[best_i], f1_t) # compare scores
 
 class TestThresholdedClassifier(TestCase):
     def __test_method(self, method, p_minus=.5, p_plus=.1, method_args={}):
