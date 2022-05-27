@@ -25,16 +25,26 @@ def main(
 
     # configure the thresholding methods
     methods = {
-        "Li \& Ma threshold (ours; PK-CCN)": Threshold("lima", p_minus=p_minus),
-        "Menon et al. (2015; PK-CCN; accuracy)": Threshold("menon", p_minus=p_minus),
-        "Menon et al. (2015; PK-CCN; F1 score)": Threshold("menon", p_minus=p_minus),
-        "Menon et al. (2015; CK-CCN; accuracy)": Threshold("menon", p_minus=p_minus, p_plus=p_plus),
-        "Menon et al. (2015; CK-CCN; F1 score)": Threshold("menon", p_minus=p_minus, p_plus=p_plus),
-        "Menon et al. (2015; CU-CCN; accuracy)": Threshold("menon"),
-        "Menon et al. (2015; CU-CCN; F1 score)": Threshold("menon"),
-        "Mithal et al. (2017; CU-CCN; G measure)": Threshold("mithal"),
-        "default (accuracy)": Threshold("default", metric="accuracy"),
-        "default (F1 score)": Threshold("default", metric="f1"),
+        "Li \& Ma threshold (ours; PK-CCN)":
+            Threshold("lima", p_minus=p_minus),
+        "Menon et al. (2015; PK-CCN; accuracy)":
+            Threshold("menon", p_minus=p_minus),
+        "Menon et al. (2015; PK-CCN; F1 score)":
+            Threshold("menon", metric="f1", p_minus=p_minus),
+        "Menon et al. (2015; CK-CCN; accuracy)":
+            Threshold("menon", p_minus=p_minus, p_plus=p_plus),
+        "Menon et al. (2015; CK-CCN; F1 score)":
+            Threshold("menon", metric="f1", p_minus=p_minus, p_plus=p_plus),
+        "Menon et al. (2015; CU-CCN; accuracy)":
+            Threshold("menon"),
+        "Menon et al. (2015; CU-CCN; F1 score)":
+            Threshold("menon", metric="f1"),
+        "Mithal et al. (2017; CU-CCN; G measure)":
+            Threshold("mithal"),
+        "default (accuracy)":
+            Threshold("default", metric="accuracy"),
+        "default (F1 score)":
+            Threshold("default", metric="f1"),
     }
 
     # these imblearn data sets have at least 100 instances in the minority class
