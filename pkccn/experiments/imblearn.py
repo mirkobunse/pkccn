@@ -3,13 +3,43 @@ import numpy as np
 import os
 import pandas as pd
 from datetime import datetime
+from functools import partial
 from imblearn.datasets import fetch_datasets
+from multiprocessing import Pool
 from pkccn import Threshold
 from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
 from tqdm.auto import tqdm
+
+def trial(args, p_minus, p_plus, methods, clf, dataset, X, y):
+    i_trial, (i_trn, i_tst) = args # unpack the tuple
+    y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
+    y_pred_trn = cross_val_predict(
+        clf,
+        X[i_trn,:],
+        y_trn,
+        method = "predict_proba",
+        cv = 5
+    )[:,1] # out-of-bag soft predictions
+    clf.fit(X[i_trn,:], y_trn) # complete fit
+    y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
+
+    # use the current model with all thresholding methods
+    trial_results = []
+    for method_name, method in methods.items():
+        threshold = method(y_trn, y_pred_trn)
+        y_pred = (y_pred_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
+        trial_results.append({
+            "dataset": dataset,
+            "method": method_name,
+            "trial": i_trial,
+            "threshold": threshold,
+            "accuracy": accuracy_score(y[i_tst], y_pred),
+            "f1": f1_score(y[i_tst], y_pred),
+        })
+    return trial_results
 
 def main(
         output_path,
@@ -69,7 +99,7 @@ def main(
     ]
 
     # set up the base classifier and the repeated cross validation splitter
-    clf = RandomForestClassifier(n_jobs=-1)
+    clf = RandomForestClassifier()
     rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
     print(f"Each of the {rskf.get_n_splits()} trials evaluates {len(methods)} methods")
 
@@ -80,37 +110,15 @@ def main(
         X = imblearn_dataset.data
         y = imblearn_dataset.target
 
-        # repeated stratified splitting
-        progressbar = tqdm(
-            enumerate(rskf.split(X, y)),
-            desc = f"{dataset} [{i_dataset+1}/{len(datasets)}]",
-            total = rskf.get_n_splits(),
-            ncols = 80
-        )
-        for i_trial, (i_trn, i_tst) in progressbar:
-            y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
-            y_pred_trn = cross_val_predict(
-                clf,
-                X[i_trn,:],
-                y_trn,
-                method = "predict_proba",
-                cv = 5
-            )[:,1] # out-of-bag soft predictions
-            clf.fit(X[i_trn,:], y_trn) # complete fit
-            y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
-
-            # use the current model with all thresholding methods
-            for method_name, method in methods.items():
-                threshold = method(y_trn, y_pred_trn)
-                y_pred = (y_pred_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
-                results.append({
-                    "dataset": dataset,
-                    "method": method_name,
-                    "trial": i_trial,
-                    "threshold": threshold,
-                    "accuracy": accuracy_score(y[i_tst], y_pred),
-                    "f1": f1_score(y[i_tst], y_pred),
-                })
+        # parallelize over repeated stratified splitting
+        with Pool() as pool:
+            trial_Xy = partial(trial, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
+            results.extend(list(tqdm(
+                pool.imap(trial_Xy, enumerate(rskf.split(X, y))),
+                desc = f"{dataset} [{i_dataset+1}/{len(datasets)}]",
+                total = rskf.get_n_splits(),
+                ncols = 80
+            )))
 
     # aggregate and store the results
     df = pd.DataFrame(results)
