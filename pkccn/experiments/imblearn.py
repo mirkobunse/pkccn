@@ -48,6 +48,7 @@ def main(
         seed = 867,
         n_folds = 10,
         n_repetitions = 10,
+        is_test_run = False,
     ):
     print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
@@ -103,6 +104,12 @@ def main(
     rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
     print(f"Each of the {rskf.get_n_splits()} trials evaluates {len(methods)} methods")
 
+    # reduce the experimental grid for testing?
+    if is_test_run:
+        print("WARNING: this is a test run; results are not meaningful")
+        clf = RandomForestClassifier(n_estimators=3)
+        datasets = datasets[:2]
+
     # iterate over all data sets
     results = []
     for i_dataset, dataset in enumerate(datasets):
@@ -113,12 +120,14 @@ def main(
         # parallelize over repeated stratified splitting
         with Pool() as pool:
             trial_Xy = partial(trial, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
-            results.extend(list(tqdm(
+            trial_results = tqdm(
                 pool.imap(trial_Xy, enumerate(rskf.split(X, y))),
                 desc = f"{dataset} [{i_dataset+1}/{len(datasets)}]",
                 total = rskf.get_n_splits(),
                 ncols = 80
-            )))
+            )
+            for result in trial_results:
+                results.extend(result)
 
     # aggregate and store the results
     df = pd.DataFrame(results)
@@ -130,7 +139,6 @@ def main(
         f1 = ("f1", "mean"),
         f1_std = ("f1", "std"),
     )
-    df['dataset'] = dataset
     df['p_minus'] = p_minus
     df['p_plus'] = p_plus
     df.to_csv(output_path)
@@ -147,6 +155,7 @@ if __name__ == '__main__':
                         help='number of cross validation folds (default: 10)')
     parser.add_argument('--n_repetitions', type=int, default=10, metavar='N',
                         help='number of repetitions of the cross validation (default: 10)')
+    parser.add_argument("--is_test_run", action="store_true")
     args = parser.parse_args()
     main(
         args.output_path,
@@ -155,4 +164,5 @@ if __name__ == '__main__':
         args.seed,
         args.n_folds,
         args.n_repetitions,
+        args.is_test_run,
     )

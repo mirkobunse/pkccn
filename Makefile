@@ -19,6 +19,10 @@ results/imblearn_natarajan_asymmetric.csv: venv/.EXPERIMENTS pkccn/experiments/i
 results/imblearn_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.3 0.1
 
+# test runs of the experiments
+results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
+	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 1 --is_test_run
+
 # virtual environment
 venv/.EXPERIMENTS: venv/bin/pip setup.py
 	venv/bin/pip install .[experiments] && touch $@
