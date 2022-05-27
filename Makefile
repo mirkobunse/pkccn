@@ -1,11 +1,19 @@
-# one experiment per noise configuration
-experiments: \
+EXPERIMENTS = \
     results/imblearn_low.csv \
     results/imblearn_high.csv \
     results/imblearn_natarajan_low.csv \
     results/imblearn_natarajan_high.csv \
     results/imblearn_natarajan_asymmetric.csv \
     results/imblearn_natarajan_inverse.csv
+
+# plot CD diagrams in Julia
+results/cdd.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) $(EXPERIMENTS)
+Manifest.toml: Project.toml
+	julia --project=. --eval "using Pkg; Pkg.instantiate()"
+
+# one experiment per noise configuration
+experiments: $(EXPERIMENTS)
 results/imblearn_low.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1
 results/imblearn_high.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py

@@ -1,0 +1,4 @@
+[deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+CriticalDifferenceDiagrams = "e3dcb5d8-23d5-4a0a-a175-b3f280ae1849"
+PGFPlots = "3b7a836e-365b-5785-a47d-02c71176b4aa"
