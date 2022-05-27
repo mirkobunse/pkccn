@@ -17,6 +17,7 @@ def main(
         seed = 867,
         n_trials = 10,
         n_folds = 5,
+        test_size = .5,
     ):
     print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
@@ -72,7 +73,7 @@ def main(
         y = imblearn_dataset.target
 
         # repeated stratified splitting
-        splits = StratifiedShuffleSplit(n_trials, test_size=.5).split(X, y)
+        splits = StratifiedShuffleSplit(n_trials, test_size=test_size).split(X, y)
         for i_trial, (i_trn, i_tst) in enumerate(splits):
             y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
             y_pred_trn = cross_val_predict(
@@ -125,6 +126,8 @@ if __name__ == '__main__':
                         help='number of trials (default: 10)')
     parser.add_argument('--n_folds', type=int, default=5, metavar='N',
                         help='number of cross validation folds (default: 5)')
+    parser.add_argument('--test_size', type=float, default=.5,
+                        help='fractional size of the test sets (default: 0.5)')
     args = parser.parse_args()
     main(
         args.output_path,
@@ -133,4 +136,5 @@ if __name__ == '__main__':
         args.seed,
         args.n_trials,
         args.n_folds,
+        args.test_size
     )
