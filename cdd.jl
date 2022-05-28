@@ -12,8 +12,8 @@ function parse_commandline()
         "--pdf", "-p"
             help = "the path of an output PDF file"
         "--metric", "-m"
-            help = "the metric to consider ∈ {f1 (default), accuracy}"
-            range_tester = x -> x ∈ ["f1", "accuracy"]
+            help = "the metric to consider ∈ {f1 (default), lima, accuracy}"
+            range_tester = x -> x ∈ ["f1", "lima", "accuracy"]
             default = "f1"
         "--alpha", "-a"
             help = "the alpha value for the hypothesis tests"
@@ -34,7 +34,7 @@ function main(args = parse_commandline())
     sequence = Pair{String, Vector{Pair{String, Vector}}}[] # sequence of CD diagrams
     for input in args["input"]
         df = CSV.read(input, DataFrame)
-        if args["metric"] == "f1" # select methods based on the metric
+        if args["metric"] ∈ ["f1", "lima"] # select methods based on the metric
             df = df[[!occursin("accuracy", x) for x in df[!, :method]], :]
         elseif args["metric"] == "accuracy"
             df = df[[!occursin("F1 score", x) for x in df[!, :method]], :]

@@ -10,6 +10,8 @@ EXPERIMENTS = \
 plots: results/cdd_f1.tex results/cdd_accuracy.tex
 results/cdd_f1.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric f1 $(EXPERIMENTS)
+results/cdd_lima.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric lima $(EXPERIMENTS)
 results/cdd_accuracy.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric accuracy $(EXPERIMENTS)
 Manifest.toml: Project.toml

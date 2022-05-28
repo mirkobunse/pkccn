@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import partial
 from imblearn.datasets import fetch_datasets
 from multiprocessing import Pool
-from pkccn import Threshold
+from pkccn import lima_score, Threshold
 from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
@@ -38,6 +38,7 @@ def trial(args, p_minus, p_plus, methods, clf, dataset, X, y):
             "threshold": threshold,
             "accuracy": accuracy_score(y[i_tst], y_pred),
             "f1": f1_score(y[i_tst], y_pred),
+            "lima": lima_score(y[i_tst], y_pred, p_minus),
         })
     return trial_results
 
@@ -138,6 +139,8 @@ def main(
         accuracy_std = ("accuracy", "std"),
         f1 = ("f1", "mean"),
         f1_std = ("f1", "std"),
+        lima = ("lima", "mean"),
+        lima_std = ("lima", "std"),
     )
     df['p_minus'] = p_minus
     df['p_plus'] = p_plus

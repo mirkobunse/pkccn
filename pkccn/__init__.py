@@ -34,6 +34,10 @@ class Threshold:
         else:
             raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
 
+def lima_score(y_hat, y_pred, p_minus):
+    """Scoring function according to Li & Ma."""
+    return - __lima_objective(0, y_hat, y_pred, p_minus / (1 - p_minus))
+
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
 
