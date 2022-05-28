@@ -1,7 +1,7 @@
 import numpy as np
 from imblearn.datasets import fetch_datasets
 from pkccn import __f1_objective as _TestObjectives__f1_objective # unittest name mangling
-from pkccn import Threshold, ThresholdedClassifier
+from pkccn import lima_score, Threshold, ThresholdedClassifier
 from pkccn.data import inject_ccn
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, recall_score
@@ -62,7 +62,7 @@ class TestObjectives(TestCase):
             self.assertAlmostEqual(ours, menon, delta=.05) # noisy labels
 
 class TestOptimizations(TestCase):
-    def test_f1_optimization(self):
+    def test_optimization(self):
         rng = np.random.RandomState(RANDOM_STATE)
         for p in rng.rand(10):
             y_true = rng.choice([-1, 1], size=10000, p=[p, 1-p])
@@ -87,6 +87,14 @@ class TestOptimizations(TestCase):
             m = Threshold("menon", metric="f1", p_minus=p_minus, p_plus=p_plus, random_state=RANDOM_STATE)(y_hat, y_pred)
             f1_m = f1_score(y_true, (y_pred > m).astype(int) * 2 - 1)
             self.assertAlmostEqual(f1_t, f1_m, delta=1e-2) # compare scores
+
+            # lima_score
+            lima_T = np.array([lima_score(y_hat, (y_pred > t).astype(int) * 2 - 1, p_minus=p_minus) for t in T])
+            best_i = np.argmin(lima_T) # grid search (inefficient)
+            t = Threshold("lima", p_minus=p_minus)(y_hat, y_pred) # numeric (efficient)
+            lima_t = lima_score(y_hat, (y_pred > t).astype(int) * 2 - 1, p_minus=p_minus)
+            if lima_T[best_i] > lima_t:
+                self.assertAlmostEqual(lima_T[best_i], lima_t) # compare scores
 
 class TestThresholdedClassifier(TestCase):
     def __test_method(self, method, p_minus=.5, p_plus=.1, method_args={}):
