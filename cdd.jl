@@ -11,8 +11,15 @@ function parse_commandline()
             help = "the path of an output TEX file"
         "--pdf", "-p"
             help = "the path of an output PDF file"
+        "--metric", "-m"
+            help = "the metric to consider ∈ {f1 (default), accuracy}"
+            range_tester = x -> x ∈ ["f1", "accuracy"]
+            default = "f1"
+        "--alpha", "-a"
+            help = "the alpha value for the hypothesis tests"
+            default = 0.1
         "input"
-            help = "the paths al input CSV files"
+            help = "the paths of all input CSV files"
             required = true
             nargs = '+'
     end
@@ -27,18 +34,22 @@ function main(args = parse_commandline())
     sequence = Pair{String, Vector{Pair{String, Vector}}}[] # sequence of CD diagrams
     for input in args["input"]
         df = CSV.read(input, DataFrame)
-        title = "\$p_- = $(df[1, :p_minus]), \\, p_+ = $(df[1, :p_plus])\\hphantom{0}\$"
+        if args["metric"] == "f1" # select methods based on the metric
+            df = df[[!occursin("accuracy", x) for x in df[!, :method]], :]
+        elseif args["metric"] == "accuracy"
+            df = df[[!occursin("F1 score", x) for x in df[!, :method]], :]
+        else
+            throw(ArgumentError("metric=\"$metric\" is not valid"))
+        end
 
         # collect the plot arguments
+        title = "\$p_- = $(df[1, :p_minus]), \\, p_+ = $(df[1, :p_plus])\$"
         pairs = CriticalDifferenceDiagrams._to_pairs(
             df,
             :method,  # the name of the treatment column
             :dataset, # the name of the observation column
-            :f1 # the name of the outcome column
+            Symbol(args["metric"]) # the name of the outcome column
         )
-
-        # sort pairs by their keys
-        # pairs = pairs[sortperm(first.(pairs))]
         push!(sequence, title => pairs)
     end
 
@@ -46,13 +57,13 @@ function main(args = parse_commandline())
     plot = CriticalDifferenceDiagrams.plot(
         sequence...;
         maximize_outcome = true,
-        alpha = 0.05
+        alpha = args["alpha"]
     )
 
     # style it
     plot.style = join([
         plot.style,
-        "cycle list={{tu01,mark=*},{tu04,mark=diamond*},{tu02,mark=triangle*},{tu03,mark=square,semithick,densely dotted},{tu05,mark=pentagon,semithick,densely dotted},{tu06,mark=oplus,semithick},{tu07,mark=halfcircle,semithick},{tu04,mark=o},{tu02,mark=diamond, semithick},{tu03,mark=triangle,semithick}}",
+        "cycle list={{tu01,mark=*},{tu04,mark=diamond*},{tu02,mark=triangle,semithick,densely dotted},{tu03,mark=square,semithick},{tu05,mark=pentagon,semithick},{tu06,mark=oplus,semithick},{tu07,mark=halfcircle,semithick},{tu04,mark=o},{tu02,mark=diamond, semithick},{tu03,mark=triangle,semithick}}",
         "xticklabel style={font=\\small}",
         "yticklabel style={font=\\small}",
         "xlabel style={font=\\small}",

@@ -7,8 +7,11 @@ EXPERIMENTS = \
     results/imblearn_natarajan_inverse.csv
 
 # plot CD diagrams in Julia
-results/cdd.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
-	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) $(EXPERIMENTS)
+plots: results/cdd_f1.tex results/cdd_accuracy.tex
+results/cdd_f1.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric f1 $(EXPERIMENTS)
+results/cdd_accuracy.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric accuracy $(EXPERIMENTS)
 Manifest.toml: Project.toml
 	julia --project=. --eval "using Pkg; Pkg.instantiate()"
 
@@ -37,4 +40,4 @@ venv/.EXPERIMENTS: venv/bin/pip setup.py
 venv/bin/pip:
 	python -m venv venv
 
-.PHONY: experiments
+.PHONY: plots experiments
