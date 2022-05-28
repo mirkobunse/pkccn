@@ -65,8 +65,8 @@ class TestOptimizations(TestCase):
     def test_f1_optimization(self):
         rng = np.random.RandomState(RANDOM_STATE)
         for p in rng.rand(10):
-            y_true = rng.choice([-1, 1], size=1000, p=[p, 1-p])
-            y_pred = rng.rand(1000) * y_true + rng.randn(1000) * .5 # synthetic predictions
+            y_true = rng.choice([-1, 1], size=10000, p=[p, 1-p])
+            y_pred = rng.rand(10000) * y_true + rng.randn(10000) * .5 # synthetic predictions
             y_pred = (y_pred - np.min(y_pred)) / (np.max(y_pred) - np.min(y_pred))
 
             # find the optimal threshold via grid search (inefficient)
@@ -79,6 +79,14 @@ class TestOptimizations(TestCase):
             f1_t = f1_score(y_true, (y_pred > t).astype(int) * 2 - 1)
             if f1_T[best_i] > f1_t:
                 self.assertAlmostEqual(f1_T[best_i], f1_t) # compare scores
+
+            # CCN noise with CK-CCN menon_threshold
+            y_hat = inject_ccn(y_true, .5, .1, random_state=RANDOM_STATE)
+            p_plus = np.sum((y_hat == -1) & (y_true == 1)) / np.sum(y_true == 1)
+            p_minus = np.sum((y_hat == 1) & (y_true == -1)) / np.sum(y_true == -1)
+            m = Threshold("menon", metric="f1", p_minus=p_minus, p_plus=p_plus, random_state=RANDOM_STATE)(y_hat, y_pred)
+            f1_m = f1_score(y_true, (y_pred > m).astype(int) * 2 - 1)
+            self.assertAlmostEqual(f1_t, f1_m, delta=1e-2) # compare scores
 
 class TestThresholdedClassifier(TestCase):
     def __test_method(self, method, p_minus=.5, p_plus=.1, method_args={}):
