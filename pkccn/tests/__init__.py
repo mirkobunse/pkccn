@@ -1,5 +1,6 @@
 import numpy as np
 from imblearn.datasets import fetch_datasets
+from fact.analysis.statistics import li_ma_significance
 from pkccn import __f1_objective as _TestObjectives__f1_objective # unittest name mangling
 from pkccn import lima_score, Threshold, ThresholdedClassifier
 from pkccn.data import inject_ccn
@@ -32,7 +33,7 @@ class TestData(TestCase):
         self.assertTrue((y_hat1 != y_hat2).any()) # not equal
 
 class TestObjectives(TestCase):
-    def test_f1_objective(self):
+    def test_objectives(self):
         rng = np.random.RandomState(RANDOM_STATE)
         y_true = rng.choice([-1, 1], size=100000, p=[.8, .2])
         p = np.sum(y_true == 1) / len(y_true) # class 1 prevalence
@@ -61,8 +62,18 @@ class TestObjectives(TestCase):
             menon = - __f1_objective(threshold, y_hat, y_pred, pi, alpha, beta)
             self.assertAlmostEqual(ours, menon, delta=.05) # noisy labels
 
+            # see __lima_objective
+            alpha = p_minus / (1 - p_minus)
+            _y_hat = y_hat[y_pred > threshold]
+            N = len(_y_hat)
+            N_plus = np.sum(_y_hat == 1)
+            N_minus = N - N_plus
+            theirs = li_ma_significance(N_plus, N_minus, alpha)
+            ours = lima_score(y_hat, y_threshold, p_minus)
+            self.assertAlmostEqual(theirs, ours)
+
 class TestOptimizations(TestCase):
-    def test_optimization(self):
+    def test_optimizations(self):
         rng = np.random.RandomState(RANDOM_STATE)
         for p in rng.rand(10):
             y_true = rng.choice([-1, 1], size=10000, p=[p, 1-p])
@@ -75,7 +86,7 @@ class TestOptimizations(TestCase):
             best_i = np.argmin(f1_T) # index of best threshold / F1 score
 
             # compare with a numerically optimized threshold (efficient)
-            t = Threshold("default", metric="f1")(y_true, y_pred)
+            t = Threshold("default", metric="f1", random_state=RANDOM_STATE)(y_true, y_pred)
             f1_t = f1_score(y_true, (y_pred > t).astype(int) * 2 - 1)
             if f1_T[best_i] > f1_t:
                 self.assertAlmostEqual(f1_T[best_i], f1_t) # compare scores
@@ -91,7 +102,7 @@ class TestOptimizations(TestCase):
             # lima_score
             lima_T = np.array([lima_score(y_hat, (y_pred > t).astype(int) * 2 - 1, p_minus=p_minus) for t in T])
             best_i = np.argmin(lima_T) # grid search (inefficient)
-            t = Threshold("lima", p_minus=p_minus)(y_hat, y_pred) # numeric (efficient)
+            t = Threshold("lima", p_minus=p_minus, random_state=RANDOM_STATE)(y_hat, y_pred) # numeric (efficient)
             lima_t = lima_score(y_hat, (y_pred > t).astype(int) * 2 - 1, p_minus=p_minus)
             if lima_T[best_i] > lima_t:
                 self.assertAlmostEqual(lima_T[best_i], lima_t) # compare scores

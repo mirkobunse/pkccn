@@ -36,7 +36,7 @@ class Threshold:
 
 def lima_score(y_hat, y_pred, p_minus):
     """Scoring function according to Li & Ma."""
-    return - __lima_objective(0, y_hat, y_pred, p_minus / (1 - p_minus))
+    return np.sqrt(-2*__lima_objective(0, y_hat, y_pred, p_minus / (1 - p_minus)))
 
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
@@ -68,27 +68,24 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
         print(
             f"┌ lima_threshold={threshold}",
             f"└┬ p_minus={p_minus}",
-            f" └ lima_value={-value}",
+            f" └ lima_value={np.sqrt(-2*value)}",
             sep="\n"
         )
     return threshold
 
 def __lima_objective(threshold, y_hat, y_pred, alpha):
     """Objective function for lima_threshold."""
-    y_hat = y_hat[y_pred >= threshold] # y_hat is in [-1, 1]
+    y_hat = y_hat[y_pred > threshold] # y_hat is in [-1, 1]
     N = len(y_hat) # N_plus + N_minus
     N_plus = np.sum(y_hat == 1)
     N_minus = N - N_plus
     if N_plus < alpha * N_minus:
         return 0.
     with np.errstate(divide='ignore', invalid='ignore'):
-        f = np.sqrt(
-            2 * N_plus * np.log(((1 + alpha) / alpha) * N_plus / N)
-            + 2 * N_minus * np.log((1 + alpha) * N_minus / N)
-        )
+        f = N_plus * np.log((1+alpha)/alpha * N_plus/N) + N_minus * np.log((1+alpha) * N_minus/N)
     if not np.isfinite(f):
         return 0.
-    return -f # maximize the function value
+    return -np.maximum(f, 0.) # maximize the function value, prevent invalid sqrt
 
 def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_state=None, verbose=False):
     """Determine the default threshold for a given metric, e.g. 0.5 for accuracy.
