@@ -38,6 +38,13 @@ def lima_score(y_hat, y_pred, p_minus):
     """Scoring function according to Li & Ma."""
     return np.sqrt(-2*__lima_objective(0, y_hat, y_pred, p_minus / (1 - p_minus)))
 
+def f1_score(y_hat, y_pred, quantiles=[.01, .99], p_minus=0., p_plus=0.):
+    """F1 scoring function with CCN support."""
+    pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+        y_hat, y_pred, quantiles, p_minus, p_plus
+    ) # estimate all relevant noise quantities
+    return -__f1_objective(0, y_hat, y_pred, pi, alpha, beta)
+
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
 
@@ -151,22 +158,9 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
     :param p_plus: optional noise rate, defaults to None
     :return: a decision threshold
     """
-    pi_corr = sum(y_hat == 1) / len(y_hat) # noisy base rate
-
-    # estimate the noise rates via Eq. 16 / Sec. 6.3 in [menon2015learning]
-    eta_min, eta_max = np.quantile(y_pred, quantiles)
-
-    # are any probabilities known? Eq. 17 in [menon2015learning]
-    if p_minus is not None:
-        eta_min = p_minus
-    if p_plus is not None:
-        eta_max = 1.0 - p_plus
-
-    alpha = (eta_min * (eta_max - pi_corr)) / (pi_corr * (eta_max - eta_min))
-    beta = ((1 - eta_max) * (pi_corr - eta_min)) / ((1 - pi_corr) * (eta_max - eta_min))
-
-    # estimate the clean base rate, i.e. the probability of the clean-positive class
-    pi = (pi_corr - eta_min) / (eta_max - eta_min) # see Sec 6.2 in [menon2015learning]
+    pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+        y_hat, y_pred, quantiles, p_minus, p_plus
+    ) # estimate all relevant noise quantities
 
     if metric == "accuracy": # compute the threshold via Eq. 12 in [menon2015learning]
         phi = lambda z : z / (1 + z)
@@ -199,6 +193,27 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
             sep="\n"
         )
     return threshold
+
+def __menon_quantities(y_hat, y_pred, quantiles=[.01, .99], p_minus=None, p_plus=None):
+    """Estimate (pi_corr, pi, alpha, beta), the quantities employed by Menon et al."""
+    pi_corr = sum(y_hat == 1) / len(y_hat) # noisy base rate
+
+    # estimate the noise rates via Eq. 16 / Sec. 6.3 in [menon2015learning]
+    eta_min, eta_max = np.quantile(y_pred, quantiles)
+
+    # are any probabilities known? Eq. 17 in [menon2015learning]
+    if p_minus is not None:
+        eta_min = p_minus
+    if p_plus is not None:
+        eta_max = 1.0 - p_plus
+
+    # estimate the clean base rate, i.e. the probability of the clean-positive class
+    pi = (pi_corr - eta_min) / (eta_max - eta_min) # see Sec 6.2 in [menon2015learning]
+
+    # estimate alpha and beta
+    alpha = (eta_min * (eta_max - pi_corr)) / (pi_corr * (eta_max - eta_min))
+    beta = ((1 - eta_max) * (pi_corr - eta_min)) / ((1 - pi_corr) * (eta_max - eta_min))
+    return (pi_corr, pi, alpha, beta, eta_min, eta_max) # return all quantities
 
 def mithal_threshold(y_hat, y_pred, quantile=.05, n_trials=100, random_state=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
