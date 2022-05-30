@@ -1,0 +1,59 @@
+\documentclass[border=5pt]{standalone}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.15}
+
+% color palette
+\definecolor{tu01}{HTML}{84B818}
+\definecolor{tu02}{HTML}{D18B12}
+\definecolor{tu03}{HTML}{1BB5B5}
+\definecolor{tu04}{HTML}{F85A3E}
+\definecolor{tu05}{HTML}{4B6CFC}
+\colorlet{tu01midlight}{tu01!60}
+\colorlet{tu02midlight}{tu02!60}
+\colorlet{tu03midlight}{tu03!60}
+\colorlet{tu04midlight}{tu04!60}
+\colorlet{tu05midlight}{tu05!60}
+
+% \inspectplot{<legend>}{<style>}{<column>}{<path>}
+\newcommand{\inspectplot}[4]{%
+  \addplot[
+    #2
+  ] table [
+    col sep = comma,
+    x = {threshold},
+    y = {#3}
+  ] {results/inspect_objectives_#4}; % add the plot
+  \addlegendentry{#1}
+}
+
+\begin{document}
+\begin{tikzpicture}
+
+\begin{axis}[
+    title={coil\_2000},
+    legend style={at={(1.1,1.)}, anchor=north west},
+    axis y line*=left
+    ]
+  % \inspectplot{noisy training accuracy}{tu01}{accuracy_trn_hat}{coil_2000.csv} % accuracy
+  % \inspectplot{noisy test accuracy}{tu01!50}{accuracy_tst_hat}{coil_2000.csv}
+  % \inspectplot{clean training accuracy}{tu01, dotted}{accuracy_trn}{coil_2000.csv}
+  % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{coil_2000.csv}
+  \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{coil_2000.csv} % F1 score
+  \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{coil_2000.csv}
+  \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{coil_2000.csv}
+  \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{coil_2000.csv}
+\end{axis}
+\begin{axis}[
+    title={coil\_2000},
+    legend style={at={(1.1,0.)}, anchor=south west},
+    axis y line*=right,
+    axis x line=none
+    ]
+  \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{coil_2000.csv} % Li & Ma
+  \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{coil_2000.csv}
+  \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{coil_2000.csv}
+  \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{coil_2000.csv}
+\end{axis}
+
+\end{tikzpicture}
+\end{document}

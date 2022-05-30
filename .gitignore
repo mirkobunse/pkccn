@@ -2,7 +2,6 @@
 /.eggs/
 /build/
 /dist/
-/results/
 /venv/
 /*.egg-info
 Manifest.toml
