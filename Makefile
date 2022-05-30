@@ -37,10 +37,14 @@ results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 1 --is_test_run
 
 # inspection of method behavior
-results/inspect_objectives_main.pdf: results/inspect_objectives_main.tex results/inspect_objectives_coil_2000.csv
+results/inspect_objectives_main.pdf: results/inspect_objectives_main.tex \
+        results/inspect_objectives_coil_2000.csv \
+        results/inspect_objectives_pen_digits.csv
 	lualatex -interaction=nonstopmode -halt-on-error -output-directory $(dir $@) $<
 results/inspect_objectives_coil_2000.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_objectives.py
 	venv/bin/python -m pkccn.experiments.inspect_objectives $@ 0.5 0.1 coil_2000
+results/inspect_objectives_pen_digits.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_objectives.py
+	venv/bin/python -m pkccn.experiments.inspect_objectives $@ 0.5 0.1 pen_digits
 
 # virtual environment
 venv/.EXPERIMENTS: venv/bin/pip setup.py

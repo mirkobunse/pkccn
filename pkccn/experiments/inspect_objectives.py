@@ -6,10 +6,10 @@ from datetime import datetime
 from functools import partial
 from imblearn.datasets import fetch_datasets
 from multiprocessing import Pool
-from pkccn import lima_score, Threshold
+from pkccn import f1_score, lima_score, Threshold
 from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
 from tqdm.auto import tqdm
 
@@ -39,6 +39,7 @@ def main(
         if i_trial != trial:
             continue # advance to the desired trial index
         y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
+        y_tst = inject_ccn(y[i_tst], p_minus, p_plus)
         y_pred_trn = cross_val_predict(
             clf,
             X[i_trn,:],
@@ -49,22 +50,33 @@ def main(
         clf.fit(X[i_trn,:], y_trn) # complete fit
         y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
 
+        # inspect eta_min and eta_max
+        eta_min_trn, eta_max_trn = np.quantile(y_pred_trn, [.01, .99])
+        eta_min_tst, eta_max_tst = np.quantile(y_pred_tst, [.01, .99])
+        print(
+            f"eta: training {eta_min_trn, eta_max_trn},",
+            f"test {eta_min_tst, eta_max_tst}",
+        )
+
         # evaluate a dense grid of thresholds
         results = []
-        for t in np.arange(0.001, 1., step=0.001):
+        for t in np.arange(0., 1.001, step=0.001):
             y_t_trn = (y_pred_trn > t).astype(int) * 2 - 1 # in [-1, 1]
             y_t_tst = (y_pred_tst > t).astype(int) * 2 - 1
             results.append({
                 "threshold": t,
-                "accuracy": accuracy_score(y[i_tst], y_t_tst), # clean test performances
-                "f1": f1_score(y[i_tst], y_t_tst),
-                "lima": lima_score(y[i_tst], y_t_tst, p_minus),
-                "accuracy_hat": accuracy_score(y_trn, y_t_trn), # noisy training performances
-                "f1_hat": f1_score(y_trn, y_t_trn),
-                "lima_hat": lima_score(y_trn, y_t_trn, p_minus),
+                "accuracy_trn_hat": accuracy_score(y_trn, y_t_trn), # noisy training performances
+                "f1_trn_hat": f1_score(y_trn, y_t_trn, p_minus=p_minus, p_plus=p_plus), # estimate F1 under noise
+                "lima_trn_hat": lima_score(y_trn, y_t_trn, p_minus),
+                "accuracy_tst_hat": accuracy_score(y_tst, y_t_tst), # noisy test performances
+                "f1_tst_hat": f1_score(y_tst, y_t_tst, p_minus=p_minus, p_plus=p_plus),
+                "lima_tst_hat": lima_score(y_tst, y_t_tst, p_minus),
                 "accuracy_trn": accuracy_score(y[i_trn], y_t_trn), # clean training performances
                 "f1_trn": f1_score(y[i_trn], y_t_trn),
                 "lima_trn": lima_score(y[i_trn], y_t_trn, p_minus),
+                "accuracy_tst": accuracy_score(y[i_tst], y_t_tst), # clean test performances
+                "f1_tst": f1_score(y[i_tst], y_t_tst),
+                "lima_tst": lima_score(y[i_tst], y_t_tst, p_minus),
             })
         df = pd.DataFrame(results)
         df['p_minus'] = p_minus

@@ -1,4 +1,4 @@
-\documentclass[border=5pt]{standalone}
+\documentclass[border=5pt,multi=tikzpicture]{standalone}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.15}
 
@@ -28,7 +28,6 @@
 
 \begin{document}
 \begin{tikzpicture}
-
 \begin{axis}[
     title={coil\_2000},
     legend style={at={(1.1,1.)}, anchor=north west},
@@ -44,16 +43,41 @@
   \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{coil_2000.csv}
 \end{axis}
 \begin{axis}[
-    title={coil\_2000},
     legend style={at={(1.1,0.)}, anchor=south west},
     axis y line*=right,
     axis x line=none
     ]
   \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{coil_2000.csv} % Li & Ma
   \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{coil_2000.csv}
-  \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{coil_2000.csv}
+  % \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{coil_2000.csv}
   \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{coil_2000.csv}
 \end{axis}
+\end{tikzpicture}
 
+\begin{tikzpicture}
+\begin{axis}[
+    title={pen\_digits},
+    legend style={at={(1.1,1.)}, anchor=north west},
+    axis y line*=left
+    ]
+  % \inspectplot{noisy training accuracy}{tu01}{accuracy_trn_hat}{pen_digits.csv} % accuracy
+  % \inspectplot{noisy test accuracy}{tu01!50}{accuracy_tst_hat}{pen_digits.csv}
+  % \inspectplot{clean training accuracy}{tu01, dotted}{accuracy_trn}{pen_digits.csv}
+  % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{pen_digits.csv}
+  \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{pen_digits.csv} % F1 score
+  \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{pen_digits.csv}
+  \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{pen_digits.csv}
+  \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{pen_digits.csv}
+\end{axis}
+\begin{axis}[
+    legend style={at={(1.1,0.)}, anchor=south west},
+    axis y line*=right,
+    axis x line=none
+    ]
+  \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{pen_digits.csv} % Li & Ma
+  \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{pen_digits.csv}
+  % \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{pen_digits.csv}
+  \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{pen_digits.csv}
+\end{axis}
 \end{tikzpicture}
 \end{document}

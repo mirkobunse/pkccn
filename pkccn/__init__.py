@@ -34,16 +34,26 @@ class Threshold:
         else:
             raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
 
-def lima_score(y_hat, y_pred, p_minus):
+def lima_score(y_true, y_threshold, p_minus):
     """Scoring function according to Li & Ma."""
-    return np.sqrt(-2*__lima_objective(0, y_hat, y_pred, p_minus / (1 - p_minus)))
+    return np.sqrt(-2*__lima_objective(0, y_true, y_threshold, p_minus / (1 - p_minus)))
 
-def f1_score(y_hat, y_pred, quantiles=[.01, .99], p_minus=0., p_plus=0.):
+def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=None, p_plus=None):
     """F1 scoring function with CCN support."""
-    pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
-        y_hat, y_pred, quantiles, p_minus, p_plus
-    ) # estimate all relevant noise quantities
-    return -__f1_objective(0, y_hat, y_pred, pi, alpha, beta)
+    alpha = None
+    beta = None
+    pi = sum(y_true == 1) / len(y_true)
+    if y_pred is not None:
+        pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+            y_true, y_pred, quantiles, p_minus, p_plus
+        ) # estimate all quantities from y_pred
+    elif p_minus is not None and p_plus is not None:
+        pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+            y_true, y_threshold, quantiles, p_minus, p_plus
+        ) # define the quantities from p_minus and p_plus (ignore quantiles)
+    elif p_minus is not None or p_plus is not None:
+        raise ValueError(f"if y_pred is None, set both p_minus and p_plus or none of them")
+    return -__f1_objective(0, y_true, y_threshold, pi, alpha, beta)
 
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
@@ -195,7 +205,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
     return threshold
 
 def __menon_quantities(y_hat, y_pred, quantiles=[.01, .99], p_minus=None, p_plus=None):
-    """Estimate (pi_corr, pi, alpha, beta), the quantities employed by Menon et al."""
+    """Estimate the quantities employed by Menon et al."""
     pi_corr = sum(y_hat == 1) / len(y_hat) # noisy base rate
 
     # estimate the noise rates via Eq. 16 / Sec. 6.3 in [menon2015learning]
