@@ -22,62 +22,56 @@
     col sep = comma,
     x = {threshold},
     y = {#3}
-  ] {results/inspect_objectives_#4}; % add the plot
+  ] {results/inspect_objectives_#4.csv}; % add the plot
   \addlegendentry{#1}
 }
 
-\begin{document}
-\begin{tikzpicture}
-\begin{axis}[
-    title={coil\_2000},
-    legend style={at={(1.1,1.)}, anchor=north west},
-    axis y line*=left
-    ]
-  % \inspectplot{noisy training accuracy}{tu01}{accuracy_trn_hat}{coil_2000.csv} % accuracy
-  % \inspectplot{noisy test accuracy}{tu01!50}{accuracy_tst_hat}{coil_2000.csv}
-  % \inspectplot{clean training accuracy}{tu01, dotted}{accuracy_trn}{coil_2000.csv}
-  % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{coil_2000.csv}
-  \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{coil_2000.csv} % F1 score
-  \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{coil_2000.csv}
-  \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{coil_2000.csv}
-  \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{coil_2000.csv}
-\end{axis}
-\begin{axis}[
-    legend style={at={(1.1,0.)}, anchor=south west},
-    axis y line*=right,
-    axis x line=none
-    ]
-  \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{coil_2000.csv} % Li & Ma
-  \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{coil_2000.csv}
-  % \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{coil_2000.csv}
-  \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{coil_2000.csv}
-\end{axis}
-\end{tikzpicture}
+% \inspectaxis{<title>}{<dataset ID>}
+\newcommand{\inspectaxis}[2]{%
+  \begin{tikzpicture}
+  \begin{axis}[
+      title={#1},
+      legend style={at={(1.1,1.)}, anchor=north west},
+      axis y line*=left
+      ]
+    % \inspectplot{noisy training accuracy}{tu01}{accuracy_trn_hat}{#2} % accuracy
+    % \inspectplot{noisy test accuracy}{tu01!50}{accuracy_tst_hat}{#2}
+    % \inspectplot{clean training accuracy}{tu01, dotted}{accuracy_trn}{#2}
+    % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{#2}
+    \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{#2} % F1 score
+    \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{#2}
+    \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{#2}
+    \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{#2}
+  \end{axis}
+  \begin{axis}[
+      legend style={at={(1.1,0.)}, anchor=south west},
+      axis y line*=right,
+      axis x line=none
+      ]
+    \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{#2} % Li & Ma
+    \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{#2}
+    % \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{#2}
+    \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{#2}
+  \end{axis}
+  \end{tikzpicture}
+}
 
-\begin{tikzpicture}
-\begin{axis}[
-    title={pen\_digits},
-    legend style={at={(1.1,1.)}, anchor=north west},
-    axis y line*=left
-    ]
-  % \inspectplot{noisy training accuracy}{tu01}{accuracy_trn_hat}{pen_digits.csv} % accuracy
-  % \inspectplot{noisy test accuracy}{tu01!50}{accuracy_tst_hat}{pen_digits.csv}
-  % \inspectplot{clean training accuracy}{tu01, dotted}{accuracy_trn}{pen_digits.csv}
-  % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{pen_digits.csv}
-  \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{pen_digits.csv} % F1 score
-  \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{pen_digits.csv}
-  \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{pen_digits.csv}
-  \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{pen_digits.csv}
-\end{axis}
-\begin{axis}[
-    legend style={at={(1.1,0.)}, anchor=south west},
-    axis y line*=right,
-    axis x line=none
-    ]
-  \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{pen_digits.csv} % Li & Ma
-  \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{pen_digits.csv}
-  % \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{pen_digits.csv}
-  \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{pen_digits.csv}
-\end{axis}
-\end{tikzpicture}
+\begin{document}
+  \inspectaxis{coil\_2000}{coil_2000}
+  \inspectaxis{satimage}{satimage}
+  \inspectaxis{letter\_img}{letter_img}
+  \inspectaxis{pen\_digits}{pen_digits}
+  \inspectaxis{protein\_homo}{protein_homo}
+  \inspectaxis{optical\_digits}{optical_digits}
+  \inspectaxis{thyroid\_sick}{thyroid_sick}
+  \inspectaxis{sick\_euthyroid}{sick_euthyroid}
+  \inspectaxis{mammography}{mammography}
+  \inspectaxis{abalone}{abalone}
+  \inspectaxis{wine\_quality}{wine_quality}
+  \inspectaxis{us\_crime}{us_crime}
+  \inspectaxis{car\_eval\_34}{car_eval_34}
+  \inspectaxis{webpage}{webpage}
+  \inspectaxis{isolet}{isolet}
+  \inspectaxis{yeast\_ml8}{yeast_ml8}
+  \inspectaxis{scene}{scene}
 \end{document}
