@@ -3,10 +3,11 @@ from imblearn.datasets import fetch_datasets
 from fact.analysis.statistics import li_ma_significance
 from pkccn import __f1_objective as _TestObjectives__f1_objective # unittest name mangling
 from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier
+from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score as sklearn_f1_score
-from sklearn.metrics import recall_score
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import train_test_split
 from unittest import TestCase
 
@@ -22,6 +23,13 @@ def fetch_data(name='ecoli', random_state=RANDOM_STATE):
         stratify = dataset.target
     )
     return (X_trn, X_tst, y_trn, y_tst)
+
+class TestMLPClassifier(TestCase):
+    def test_classifier(self):
+        X_trn, X_tst, y_trn, y_tst = fetch_data("coil_2000")
+        clf = MLPClassifier(class_weight="balanced")
+        clf.fit(X_trn, y_trn)
+        print(f"balanced accuracy: {balanced_accuracy_score(y_tst, clf.predict(X_tst))}")
 
 class TestData(TestCase):
     def test_inject_ccn(self):
