@@ -28,7 +28,7 @@ def main(
     np.random.seed(seed)
 
     # set up the base classifier, the repeated cross validation splitter, and the data
-    clf = RandomForestClassifier()
+    clf = RandomForestClassifier(class_weight="balanced")
     rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
     imblearn_dataset = fetch_datasets()[dataset]
     X = imblearn_dataset.data
