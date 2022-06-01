@@ -36,6 +36,10 @@ results/imblearn_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imbl
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 1 --is_test_run
 
+# inspection of the data sets
+results/inspect_datasets.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_datasets.py
+	venv/bin/python -m pkccn.experiments.inspect_datasets $@
+
 # inspection of method behavior
 results/inspect_objectives_main.pdf: results/inspect_objectives_main.tex \
         results/inspect_objectives_coil_2000.csv \
