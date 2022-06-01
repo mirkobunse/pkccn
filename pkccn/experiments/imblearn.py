@@ -13,7 +13,43 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
 from tqdm.auto import tqdm
 
+def datasets(is_test_run=False):
+    """Yield the names of all evaluated imblearn data sets"""
+    if is_test_run:
+        return ["yeast_me2", "ecoli"] # small data sets for testing
+    return [ # imblearn data sets, sorted by their clean AUROC
+        "letter_img",
+        "pen_digits",
+        "car_eval_4",
+        "optical_digits",
+        "thyroid_sick",
+        "isolet",
+        "sick_euthyroid",
+        "car_eval_34",
+        "spectrometer",
+        "protein_homo",
+        "libras_move",
+        "arrhythmia",
+        "webpage",
+        "satimage",
+        "yeast_me2",
+        "mammography",
+        "ecoli",
+        "us_crime",
+        "oil",
+        "ozone_level",
+        # the following data sets have a clean AUROC below .85:
+        # "abalone",
+        # "wine_quality",
+        # "scene",
+        # "solar_flare_m0",
+        # "abalone_19",
+        # "coil_2000",
+        # "yeast_ml8"
+    ]
+
 def trial(args, p_minus, p_plus, methods, clf, dataset, X, y):
+    """A single trial of imblearn.main()"""
     i_trial, (i_trn, i_tst) = args # unpack the tuple
     y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
     y_pred_trn = cross_val_predict(
@@ -79,27 +115,6 @@ def main(
             Threshold("default", metric="f1"),
     }
 
-    # these imblearn data sets have at least 100 instances in the minority class
-    datasets = [
-        "coil_2000",
-        "satimage",
-        "letter_img",
-        "pen_digits",
-        "protein_homo",
-        "optical_digits",
-        "thyroid_sick",
-        "sick_euthyroid",
-        "mammography",
-        "abalone",
-        "wine_quality",
-        "us_crime",
-        "car_eval_34",
-        "webpage",
-        "isolet",
-        "yeast_ml8",
-        "scene"
-    ]
-
     # set up the base classifier and the repeated cross validation splitter
     clf = RandomForestClassifier()
     rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
@@ -109,11 +124,10 @@ def main(
     if is_test_run:
         print("WARNING: this is a test run; results are not meaningful")
         clf = RandomForestClassifier(n_estimators=3)
-        datasets = datasets[:2]
 
     # iterate over all data sets
     results = []
-    for i_dataset, dataset in enumerate(datasets):
+    for i_dataset, dataset in enumerate(datasets(is_test_run)):
         imblearn_dataset = fetch_datasets()[dataset]
         X = imblearn_dataset.data
         y = imblearn_dataset.target
@@ -123,7 +137,7 @@ def main(
             trial_Xy = partial(trial, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
             trial_results = tqdm(
                 pool.imap(trial_Xy, enumerate(rskf.split(X, y))),
-                desc = f"{dataset} [{i_dataset+1}/{len(datasets)}]",
+                desc = f"{dataset} [{i_dataset+1}/{len(datasets(is_test_run))}]",
                 total = rskf.get_n_splits(),
                 ncols = 80
             )

@@ -4,6 +4,7 @@ import os
 import pandas as pd
 from imblearn.datasets import fetch_datasets
 from pkccn.experiments import MLPClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 
 def main(
@@ -17,11 +18,11 @@ def main(
 
     # set up the hyper-parameter grid of the base classifier
     cv = GridSearchCV(
-        MLPClassifier(class_weight="balanced", hidden_layer_sizes=(50,)),
-        { "alpha": [1e-0, 1e-1, 1e-2, 1e-3] },
+        RandomForestClassifier(class_weight="balanced"),
+        {},
         scoring = "roc_auc",
         cv = n_folds,
-        verbose = 3,
+        verbose = 0, # 3
         refit = False
     )
 
@@ -40,6 +41,12 @@ def main(
             "F": X.shape[1],
         })
         print(f"[{i+1}/{len(datasets)}] {dataset} yields AUROC={cv.best_score_:.4f}")
+        # print(pd.DataFrame({
+        #     "max_depth": cv.cv_results_["param_max_depth"],
+        #     "time": cv.cv_results_["mean_fit_time"],
+        #     "auroc": cv.cv_results_["mean_test_score"],
+        #     "auroc_std": cv.cv_results_["std_test_score"],
+        # }))
     df = pd.DataFrame(results)
     df.to_csv(output_path)
     print(f"{df.shape[0]} results succesfully stored at {output_path}")
