@@ -40,7 +40,7 @@
     % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{#2}
     \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{#2} % F1 score
     \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{#2}
-    \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{#2}
+    % \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{#2}
     \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{#2}
   \end{axis}
   \begin{axis}[
@@ -57,21 +57,27 @@
 }
 
 \begin{document}
-  \inspectaxis{coil\_2000}{coil_2000}
-  \inspectaxis{satimage}{satimage}
   \inspectaxis{letter\_img}{letter_img}
   \inspectaxis{pen\_digits}{pen_digits}
-  \inspectaxis{protein\_homo}{protein_homo}
+  \inspectaxis{car\_eval\_4}{car_eval_4}
   \inspectaxis{optical\_digits}{optical_digits}
   \inspectaxis{thyroid\_sick}{thyroid_sick}
-  \inspectaxis{sick\_euthyroid}{sick_euthyroid}
-  \inspectaxis{mammography}{mammography}
-  \inspectaxis{abalone}{abalone}
-  \inspectaxis{wine\_quality}{wine_quality}
-  \inspectaxis{us\_crime}{us_crime}
-  \inspectaxis{car\_eval\_34}{car_eval_34}
-  \inspectaxis{webpage}{webpage}
   \inspectaxis{isolet}{isolet}
-  \inspectaxis{yeast\_ml8}{yeast_ml8}
-  \inspectaxis{scene}{scene}
+  \inspectaxis{sick\_euthyroid}{sick_euthyroid}
+  \inspectaxis{car\_eval\_34}{car_eval_34}
+  \inspectaxis{spectrometer}{spectrometer}
+  \inspectaxis{protein\_homo}{protein_homo}
+  \inspectaxis{libras\_move}{libras_move}
+  \inspectaxis{arrhythmia}{arrhythmia}
+  \inspectaxis{webpage}{webpage}
+  \inspectaxis{satimage}{satimage}
+  \inspectaxis{yeast\_me2}{yeast_me2}
+  \inspectaxis{mammography}{mammography}
+  \inspectaxis{ecoli}{ecoli}
+  \inspectaxis{us\_crime}{us_crime}
+  \inspectaxis{oil}{oil}
+  \inspectaxis{ozone\_level}{ozone_level}
+
+  % \inspectaxis{TEST ecoli}{test_ecoli}
+  % \inspectaxis{TEST yeast\_me2}{test_yeast_me2}
 \end{document}
