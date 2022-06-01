@@ -3,17 +3,18 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.base import BaseEstimator, ClassifierMixin
+from time import time
 
 class MLPClassifier(BaseEstimator, ClassifierMixin):
     """A simple neural network."""
     def __init__(
             self,
             activation = "sigmoid",
-            hidden_layer_sizes = (100,),
-            alpha = .0001,
+            hidden_layer_sizes = (20,),
+            alpha = .001,
             max_iter = 200,
             class_weight = None,
-            n_repeats = 5,
+            n_repeats = 1,
         ):
         super().__init__()
         self.activation = activation
@@ -25,8 +26,8 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
     def fit(self, X, y):
         w = np.ones_like(y, dtype=float) # set up sample weights
         if self.class_weight == "balanced":
-            w[y==1] = len(y) / np.sum(y==1)
-            w[y==-1] = len(y) / np.sum(y==-1)
+            w[y==1] = len(y) / np.sum(y==1) / 2
+            w[y==-1] = len(y) / np.sum(y==-1) / 2
         X = torch.tensor(X, dtype=torch.float32)
         y = torch.tensor(y, dtype=torch.float32).unsqueeze(1)
         w = torch.tensor(w, dtype=torch.float32).unsqueeze(1)
@@ -34,8 +35,9 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
         # multi-start optimization
         best = (np.inf, None) # (loss, module)
         for i in range(self.n_repeats):
+            # start = time()
             current = self.__fit_once(X, y, w)
-            print(f"Loss {i}/{self.n_repeats}: {current[0]}")
+            # print(f"Loss {i}/{self.n_repeats}: {current[0]:.5f} in {time() - start:.2f}s")
             if current[0] < best[0]:
                 best = current
         self.module = best[1]
@@ -50,23 +52,26 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
         optimizer = optim.LBFGS(
             module.parameters(),
             line_search_fn = "strong_wolfe",
-            max_iter = 10,
-            tolerance_grad = 1e-4,
-            tolerance_change = 1e-6
+            max_iter = 20, # default: 20
+            tolerance_grad = 1e-3, # default: 1e-5
+            tolerance_change = 1e-6 # default: 1e-9
         )
         module.train()
+        def closure():
+            if torch.is_grad_enabled():
+                optimizer.zero_grad()
+            loss = (w * criterion(module(X), y)).mean()
+            if loss.requires_grad:
+                for n, p in module.named_parameters():
+                    if "weight" in n: # L2 regularization
+                        loss += self.alpha * torch.norm(p).pow(2)
+                loss.backward()
+                # print(f"{i:03d} -> {loss.item():.4e}")
+            return loss
         for i in range(self.max_iter): # training
-            def closure():
-                if torch.is_grad_enabled():
-                    optimizer.zero_grad()
-                loss = (w * criterion(module(X), y)).mean()
-                if loss.requires_grad:
-                    loss.backward()
-                    # print(f"{i:03d} -> {loss.item():.4e}")
-                return loss
             optimizer.step(closure)
         with torch.no_grad(): # evaluate the loss of this fit
-            loss = (w * criterion(module(X), y)).mean().item()
+            loss = closure().item()
         return loss, module
     def decision_function(self, X):
         return self.module(torch.tensor(X, dtype=torch.float32)).detach().numpy().flatten()
