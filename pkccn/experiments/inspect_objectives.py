@@ -7,10 +7,10 @@ from functools import partial
 from imblearn.datasets import fetch_datasets
 from multiprocessing import Pool
 from pkccn import f1_score, lima_score, Threshold
+from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
+from sklearn.model_selection import cross_val_predict, GridSearchCV, RepeatedStratifiedKFold
 from tqdm.auto import tqdm
 
 def main(
@@ -27,8 +27,16 @@ def main(
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
     np.random.seed(seed)
 
+    # set up the hyper-parameter grid of the base classifier
+    cv = GridSearchCV(
+        MLPClassifier(class_weight="balanced", hidden_layer_sizes=(50,)),
+        { "alpha": [1e-0, 1e-1, 1e-2, 1e-3] },
+        scoring = "roc_auc",
+        cv = 3,
+        verbose = 3,
+    )
+
     # set up the base classifier, the repeated cross validation splitter, and the data
-    clf = RandomForestClassifier(class_weight="balanced")
     rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
     imblearn_dataset = fetch_datasets()[dataset]
     X = imblearn_dataset.data
@@ -40,6 +48,9 @@ def main(
             continue # advance to the desired trial index
         y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
         y_tst = inject_ccn(y[i_tst], p_minus, p_plus)
+        cv.fit(X[i_trn,:], y_trn) # hyper-parameter optimization on noisy data
+        print(pd.DataFrame(cv.cv_results_)[["param_alpha", "mean_fit_time", "mean_test_score", "std_test_score"]])
+        clf = cv.best_estimator_
         y_pred_trn = cross_val_predict(
             clf,
             X[i_trn,:],

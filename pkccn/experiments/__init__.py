@@ -10,7 +10,7 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
     def __init__(
             self,
             activation = "sigmoid",
-            hidden_layer_sizes = (20,),
+            hidden_layer_sizes = (50,),
             alpha = .001,
             max_iter = 200,
             class_weight = None,
@@ -23,7 +23,12 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
         self.max_iter = max_iter
         self.class_weight = class_weight
         self.n_repeats = n_repeats
-    def fit(self, X, y):
+    def fit(self, X, _y):
+        self.classes_ = np.unique(_y)
+        if len(self.classes_) != 2:
+            raise ValueError(f"More than two classes {self.classes_}")
+        y = np.ones_like(_y, dtype=int)
+        y[_y==self.classes_[0]] = -1 # y in [-1, +1]
         w = np.ones_like(y, dtype=float) # set up sample weights
         if self.class_weight == "balanced":
             w[y==1] = len(y) / np.sum(y==1) / 2
@@ -76,7 +81,9 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
     def decision_function(self, X):
         return self.module(torch.tensor(X, dtype=torch.float32)).detach().numpy().flatten()
     def predict_proba(self, X):
-        return (self.decision_function(X) + 1) / 2
+        y_pred = (self.decision_function(X) + 1) / 2
+        y_pred = np.stack((1-y_pred, y_pred)).T
+        return y_pred / y_pred.sum(axis=1, keepdims=True)
     def predict(self, X):
         return (self.decision_function(X) > 0) * 2 - 1
 
