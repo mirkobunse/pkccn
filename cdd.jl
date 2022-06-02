@@ -34,13 +34,6 @@ function main(args = parse_commandline())
     sequence = Pair{String, Vector{Pair{String, Vector}}}[] # sequence of CD diagrams
     for input in args["input"]
         df = CSV.read(input, DataFrame)
-        if args["metric"] ∈ ["f1", "lima"] # select methods based on the metric
-            df = df[[!occursin("accuracy", x) for x in df[!, :method]], :]
-        elseif args["metric"] == "accuracy"
-            df = df[[!occursin("F1 score", x) for x in df[!, :method]], :]
-        else
-            throw(ArgumentError("metric=\"$metric\" is not valid"))
-        end
 
         # collect the plot arguments
         title = "\$p_- = $(df[1, :p_minus]), \\, p_+ = $(df[1, :p_plus])\$"
