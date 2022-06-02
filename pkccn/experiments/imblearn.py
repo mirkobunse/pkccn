@@ -74,7 +74,7 @@ def trial(args, p_minus, p_plus, methods, clf, dataset, X, y):
             "threshold": threshold,
             "accuracy": accuracy_score(y[i_tst], y_pred),
             "f1": f1_score(y[i_tst], y_pred),
-            "lima": lima_score(y[i_tst], y_pred, p_minus),
+            "lima": lima_score(inject_ccn(y[i_tst], p_minus, p_plus), y_pred, p_minus), # noisy test LiMa
         })
     return trial_results
 
