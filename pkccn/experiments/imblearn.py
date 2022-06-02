@@ -10,7 +10,7 @@ from pkccn import lima_score, Threshold
 from pkccn.data import inject_ccn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.model_selection import cross_val_predict, RepeatedStratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 from tqdm.auto import tqdm
 
 def datasets(is_test_run=False):
@@ -37,27 +37,30 @@ def datasets(is_test_run=False):
         "scene",
     ]
 
-def trial(args, p_minus, p_plus, methods, clf, dataset, X, y):
+def trial(i_trial, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
     """A single trial of imblearn.main()"""
-    i_trial, (i_trn, i_tst) = args # unpack the tuple
-    y_trn = inject_ccn(y[i_trn], p_minus, p_plus)
-    clf.fit(X[i_trn,:], y_trn)
-    y_pred_trn = clf.predict_proba(X[i_trn,:])[:,1] # predict the training set
-    y_pred_tst = clf.predict_proba(X[i_tst,:])[:,1]
+    y_ccn = inject_ccn(y, p_minus, p_plus)
 
-    # use the current model with all thresholding methods
+    # cross_val_predict, fitting a separate threshold in each fold
+    y_pred = { m: np.zeros_like(y) for m in methods.keys() } # method name -> predictions
+    for i_trn, i_tst in StratifiedKFold(n_folds, shuffle=True).split(X, y):
+        clf.fit(X[i_trn,:], y_ccn[i_trn])
+        y_trn = clf.predict_proba(X[i_trn,:])[:,1]
+        y_tst = clf.predict_proba(X[i_tst,:])[:,1]
+        for method_name, method in methods.items():
+            threshold = method(y_ccn[i_trn], y_trn)
+            y_pred[method_name][i_tst] = (y_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
+
+    # evaluate all predictions
     trial_results = []
-    for method_name, method in methods.items():
-        threshold = method(y_trn, y_pred_trn)
-        y_pred = (y_pred_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
+    for method_name, y_method in y_pred.items():
         trial_results.append({
             "dataset": dataset,
             "method": method_name,
             "trial": i_trial,
-            "threshold": threshold,
-            "accuracy": accuracy_score(y_pred, y[i_tst]),
-            "f1": f1_score(y_pred, y[i_tst]), # CAUTION: wrong order of arguments
-            "lima": lima_score(inject_ccn(y[i_tst], p_minus, p_plus), y_pred, p_minus), # noisy test LiMa
+            "accuracy": accuracy_score(y_method, y),
+            "f1": f1_score(y_method, y), # CAUTION: wrong order of arguments
+            "lima": lima_score(y_ccn, y_method, p_minus), # noisy LiMa
         })
     return trial_results
 
@@ -74,7 +77,7 @@ def main(
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
     np.random.seed(seed)
 
-    # configure the thresholding methods
+    # configure the thresholding methods and the base classifier
     methods = {
         "Li \& Ma threshold (ours; PK-CCN)":
             Threshold("lima", p_minus=p_minus),
@@ -89,16 +92,12 @@ def main(
         "default (accuracy)":
             Threshold("default", metric="accuracy"),
     }
-
-    # set up the base classifier and the repeated cross validation splitter
-    clf = RandomForestClassifier()
-    rskf = RepeatedStratifiedKFold(n_splits=n_folds, n_repeats=n_repetitions)
-    print(f"Each of the {rskf.get_n_splits()} trials evaluates {len(methods)} methods")
+    clf = RandomForestClassifier(max_depth=8)
 
     # reduce the experimental grid for testing?
     if is_test_run:
         print("WARNING: this is a test run; results are not meaningful")
-        clf = RandomForestClassifier(n_estimators=3)
+        clf = RandomForestClassifier(max_depth=8, n_estimators=3)
 
     # iterate over all data sets
     results = []
@@ -109,11 +108,11 @@ def main(
 
         # parallelize over repeated stratified splitting
         with Pool() as pool:
-            trial_Xy = partial(trial, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
+            trial_Xy = partial(trial, n_folds=n_folds, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
             trial_results = tqdm(
-                pool.imap(trial_Xy, enumerate(rskf.split(X, y))),
+                pool.imap(trial_Xy, np.arange(n_repetitions)),
                 desc = f"{dataset} [{i_dataset+1}/{len(datasets(is_test_run))}]",
-                total = rskf.get_n_splits(),
+                total = n_repetitions,
                 ncols = 80
             )
             for result in trial_results:
@@ -122,8 +121,6 @@ def main(
     # aggregate and store the results
     df = pd.DataFrame(results)
     df = df.groupby(["dataset", "method"], sort=False).agg(
-        threshold = ("threshold", "mean"),
-        threshold_std = ("threshold", "std"),
         accuracy = ("accuracy", "mean"),
         accuracy_std = ("accuracy", "std"),
         f1 = ("f1", "mean"),
