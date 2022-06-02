@@ -83,8 +83,8 @@ def main(
         p_minus,
         p_plus,
         seed = 867,
-        n_folds = 10,
-        n_repetitions = 10,
+        n_folds = 5,
+        n_repetitions = 5,
         is_test_run = False,
     ):
     print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
@@ -168,10 +168,10 @@ if __name__ == '__main__':
     parser.add_argument('p_plus', type=float, help='noise rate of the positive class')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
                         help='random number generator seed (default: 876)')
-    parser.add_argument('--n_folds', type=int, default=10, metavar='N',
-                        help='number of cross validation folds (default: 10)')
-    parser.add_argument('--n_repetitions', type=int, default=10, metavar='N',
-                        help='number of repetitions of the cross validation (default: 10)')
+    parser.add_argument('--n_folds', type=int, default=5, metavar='N',
+                        help='number of cross validation folds (default: 5)')
+    parser.add_argument('--n_repetitions', type=int, default=5, metavar='N',
+                        help='number of repetitions of the cross validation (default: 5)')
     parser.add_argument("--is_test_run", action="store_true")
     args = parser.parse_args()
     main(
