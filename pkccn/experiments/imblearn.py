@@ -89,13 +89,13 @@ def main(
 
     # iterate over all data sets
     results = []
+    trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     for i_dataset, dataset in enumerate(datasets(is_test_run)):
         imblearn_dataset = fetch_datasets()[dataset]
         X = imblearn_dataset.data
         y = imblearn_dataset.target
 
         # parallelize over repetitions
-        trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
         with Pool() as pool:
             trial_Xy = partial(trial, n_folds=n_folds, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
             trial_results = tqdm(
