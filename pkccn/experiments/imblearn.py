@@ -58,8 +58,8 @@ def trial(i_trial, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
             "dataset": dataset,
             "method": method_name,
             "trial": i_trial,
-            "accuracy": accuracy_score(y_method, y),
-            "f1": f1_score(y_method, y), # CAUTION: wrong order of arguments
+            "accuracy": accuracy_score(y, y_method),
+            "f1": f1_score(y, y_method),
             "lima": lima_score(y_ccn, y_method, p_minus), # noisy LiMa
         })
     return trial_results
