@@ -69,7 +69,8 @@ function main(args = parse_commandline())
             )
         ),
         [:p_minus, :p_plus], # rows
-        :method # columns
+        :method, # columns
+        :value
     )
 
     # generate the 2D critical difference diagram
