@@ -29,54 +29,59 @@
 % \inspectaxis{<title>}{<dataset ID>}
 \newcommand{\inspectaxis}[2]{%
   \begin{tikzpicture}
-  \begin{axis}[
+  \begin{axis}[ % left y axis: F1 scores
       title={#1},
       legend style={at={(1.1,1.)}, anchor=north west},
       axis y line*=left
       ]
-    % \inspectplot{noisy training accuracy}{tu01}{accuracy_trn_hat}{#2} % accuracy
-    % \inspectplot{noisy test accuracy}{tu01!50}{accuracy_tst_hat}{#2}
-    % \inspectplot{clean training accuracy}{tu01, dotted}{accuracy_trn}{#2}
-    % \inspectplot{clean test accuracy}{tu01, dashed}{accuracy_tst}{#2}
-    \inspectplot{noisy training F1 score}{tu03}{f1_trn_hat}{#2} % F1 score
-    \inspectplot{noisy test F1 score}{tu03!50}{f1_tst_hat}{#2}
-    % \inspectplot{clean training F1 score}{tu03, dotted}{f1_trn}{#2}
-    \inspectplot{clean test F1 score}{tu03, dashed}{f1_tst}{#2}
+    % clean F1: training and test
+    \inspectplot{clean training F1}{tu01}{f1_trn}{#2}
+    \inspectplot{clean test F1}{tu01!50}{f1_tst}{#2}
+
+    % F1 OOB training set estimates by Menon et al. (2015)
+    \inspectplot{Menon CK-CCN}{tu02, dotted}{f1_trn_ckccn}{#2}
+    \inspectplot{Menon PK-CCN}{tu02}{f1_trn_pkccn}{#2}
+    \inspectplot{Menon CU-CCN}{tu02!50}{f1_trn_cuccn}{#2}
   \end{axis}
-  \begin{axis}[
+  \begin{axis}[ % right y axis: Li&Ma scores
       legend style={at={(1.1,0.)}, anchor=south west},
       axis y line*=right,
       axis x line=none
       ]
-    \inspectplot{noisy training Li \& Ma}{tu02}{lima_trn_hat}{#2} % Li & Ma
-    \inspectplot{noisy test Li \& Ma}{tu02!50}{lima_tst_hat}{#2}
-    % \inspectplot{clean training Li \& Ma}{tu02, dotted}{lima_trn}{#2}
-    \inspectplot{clean test Li \& Ma}{tu02, dashed}{lima_tst}{#2}
+    \inspectplot{Li\&Ma PK-CCN}{tu03}{lima_trn}{#2}
+    \inspectplot{Li\&Ma PK-CCN}{tu03!50}{lima_tst}{#2}
   \end{axis}
   \end{tikzpicture}
 }
 
 \begin{document}
-  \inspectaxis{letter\_img}{letter_img}
-  \inspectaxis{pen\_digits}{pen_digits}
-  \inspectaxis{car\_eval\_4}{car_eval_4}
-  \inspectaxis{optical\_digits}{optical_digits}
-  \inspectaxis{thyroid\_sick}{thyroid_sick}
-  \inspectaxis{isolet}{isolet}
-  \inspectaxis{sick\_euthyroid}{sick_euthyroid}
-  \inspectaxis{car\_eval\_34}{car_eval_34}
-  \inspectaxis{spectrometer}{spectrometer}
-  \inspectaxis{protein\_homo}{protein_homo}
-  \inspectaxis{libras\_move}{libras_move}
-  \inspectaxis{arrhythmia}{arrhythmia}
-  \inspectaxis{webpage}{webpage}
-  \inspectaxis{satimage}{satimage}
-  \inspectaxis{yeast\_me2}{yeast_me2}
-  \inspectaxis{mammography}{mammography}
   \inspectaxis{ecoli}{ecoli}
+  \inspectaxis{optical\_digits}{optical_digits}
+  \inspectaxis{satimage}{satimage}
+  \inspectaxis{pen\_digits}{pen_digits}
+  \inspectaxis{abalone}{abalone}
+  \inspectaxis{sick\_euthyroid}{sick_euthyroid}
+  \inspectaxis{spectrometer}{spectrometer}
+  \inspectaxis{car\_eval\_34}{car_eval_34}
+  \inspectaxis{isolet}{isolet}
   \inspectaxis{us\_crime}{us_crime}
+  \inspectaxis{yeast\_ml8}{yeast_ml8}
+  \inspectaxis{scene}{scene}
+  \inspectaxis{libras\_move}{libras_move}
+  \inspectaxis{thyroid\_sick}{thyroid_sick}
+  \inspectaxis{coil\_2000}{coil_2000}
+  \inspectaxis{arrhythmia}{arrhythmia}
+  \inspectaxis{solar\_flare\_m0}{solar_flare_m0}
   \inspectaxis{oil}{oil}
+  \inspectaxis{car\_eval\_4}{car_eval_4}
+  \inspectaxis{wine\_quality}{wine_quality}
+  \inspectaxis{letter\_img}{letter_img}
+  \inspectaxis{yeast\_me2}{yeast_me2}
+  \inspectaxis{webpage}{webpage}
   \inspectaxis{ozone\_level}{ozone_level}
+  \inspectaxis{mammography}{mammography}
+  \inspectaxis{protein\_homo}{protein_homo}
+  \inspectaxis{abalone\_19}{abalone_19}
 
   % \inspectaxis{TEST ecoli}{test_ecoli}
   % \inspectaxis{TEST yeast\_me2}{test_yeast_me2}
