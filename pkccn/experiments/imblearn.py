@@ -19,8 +19,9 @@ def datasets(is_test_run=False):
         return ["yeast_me2", "ecoli"] # small data sets for testing
     return list(fetch_datasets().keys())
 
-def trial(i_trial, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
+def trial(trial_seed, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
     """A single trial of imblearn.main()"""
+    np.random.seed(trial_seed)
     y_ccn = inject_ccn(y, p_minus, p_plus)
 
     # cross_val_predict, fitting a separate threshold in each fold
@@ -39,7 +40,7 @@ def trial(i_trial, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
         trial_results.append({
             "dataset": dataset,
             "method": method_name,
-            "trial": i_trial,
+            "trial_seed": trial_seed,
             "accuracy": accuracy_score(y, y_method),
             "f1": f1_score(y, y_method),
             "lima": lima_score(y_ccn, y_method, p_minus), # noisy LiMa
@@ -93,11 +94,12 @@ def main(
         X = imblearn_dataset.data
         y = imblearn_dataset.target
 
-        # parallelize over repeated stratified splitting
+        # parallelize over repetitions
+        trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
         with Pool() as pool:
             trial_Xy = partial(trial, n_folds=n_folds, p_minus=p_minus, p_plus=p_plus, methods=methods, clf=clf, dataset=dataset, X=X, y=y)
             trial_results = tqdm(
-                pool.imap(trial_Xy, np.arange(n_repetitions)),
+                pool.imap(trial_Xy, trial_seeds), # each trial gets a different seed
                 desc = f"{dataset} [{i_dataset+1}/{len(datasets(is_test_run))}]",
                 total = n_repetitions,
                 ncols = 80

@@ -34,7 +34,7 @@ results/imblearn_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imbl
 
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
-	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 1 --is_test_run
+	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 3 --is_test_run
 
 # inspection of the data sets
 results/inspect_datasets.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_datasets.py
