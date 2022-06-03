@@ -173,8 +173,20 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
     pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
         y_hat, y_pred, quantiles, p_minus, p_plus
     ) # estimate all relevant noise quantities
-    if alpha + beta == 1:
-        print(f"ERROR: unique(y_hat)={np.unique(y_hat)}, eta_min={eta_min}, eta_max={eta_max}, pi={pi}, pi_corr={pi_corr}")
+
+    # handle a corner case in which the CCN adaptation in __f1_objective is undefined
+    if pi == 0: # class +1 is estimated to occur _never_
+        if verbose:
+            print(
+                f"┌ menon_threshold={1.0}",
+                f"└┬ quantiles={quantiles}",
+                f" ├ metric={metric}",
+                f" ├ eta_min={eta_min}, eta_max={eta_max}",
+                f" ├ alpha={alpha}, beta={beta}",
+                f" └ pi_corr={pi_corr}, pi={pi}",
+                sep="\n"
+            )
+        return 1.0 # never predict class +1
 
     if metric == "accuracy": # compute the threshold via Eq. 12 in [menon2015learning]
         phi = lambda z : z / (1 + z)
