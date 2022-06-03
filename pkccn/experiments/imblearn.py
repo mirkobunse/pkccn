@@ -69,8 +69,8 @@ def main(
         p_minus,
         p_plus,
         seed = 867,
-        n_folds = 5,
-        n_repetitions = 5,
+        n_folds = 10,
+        n_repetitions = 20,
         is_test_run = False,
     ):
     print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
