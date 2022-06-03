@@ -125,6 +125,7 @@ def main(
         lima = ("lima", "mean"),
         lima_std = ("lima", "std"),
     )
+    print(df.groupby("method", sort=False).agg(f1 = ("f1", "mean")))
     df['p_minus'] = p_minus
     df['p_plus'] = p_plus
     df.to_csv(output_path)
