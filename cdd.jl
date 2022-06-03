@@ -32,19 +32,45 @@ function main(args = parse_commandline())
 
     # collect results of all input CSV files
     sequence = Pair{String, Vector{Pair{String, Vector}}}[] # sequence of CD diagrams
+    df = DataFrame() # concatenation of all results
     for input in args["input"]
-        df = CSV.read(input, DataFrame)
+        input_df = CSV.read(input, DataFrame)
+        df = vcat(df, input_df)
 
         # collect the plot arguments
-        title = "\$p_- = $(df[1, :p_minus]), \\, p_+ = $(df[1, :p_plus])\$"
+        title = "\$p_- = $(input_df[1, :p_minus]), \\, p_+ = $(input_df[1, :p_plus])\$"
         pairs = CriticalDifferenceDiagrams._to_pairs(
-            df,
+            input_df,
             :method,  # the name of the treatment column
             :dataset, # the name of the observation column
             Symbol(args["metric"]) # the name of the outcome column
         )
         push!(sequence, title => pairs)
     end
+
+    # print a table of average scores
+    df[df[!,:method].=="Li \\& Ma threshold (ours; PK-CCN)", :method] .= "Li\\&Ma PK"
+    df[df[!,:method].=="Menon et al. (2015; PK-CCN; accuracy)", :method] .= "Menon PK"
+    df[df[!,:method].=="Menon et al. (2015; CK-CCN; accuracy)", :method] .= "Menon CK"
+    df[df[!,:method].=="Menon et al. (2015; CU-CCN; accuracy)", :method] .= "Menon CU"
+    df[df[!,:method].=="Mithal et al. (2017; CU-CCN; G measure)", :method] .= "Mithal CU"
+    df[df[!,:method].=="default (accuracy)", :method] .= "default"
+    @show "Tab. 1" agg = unstack( # unstack from long to wide format
+        vcat( # concatenate noise-wise average and overall average
+            combine(
+                groupby(df, [:method, :p_minus, :p_plus]),
+                Symbol(args["metric"]) => DataFrames.mean => :value
+            ),
+            combine(
+                groupby(df, :method),
+                Symbol(args["metric"]) => DataFrames.mean => :value,
+                :p_minus => (x -> -1) => :p_minus, # dummy values
+                :p_plus => (x -> -1) => :p_plus
+            )
+        ),
+        [:p_minus, :p_plus], # rows
+        :method # columns
+    )
 
     # generate the 2D critical difference diagram
     plot = CriticalDifferenceDiagrams.plot(
