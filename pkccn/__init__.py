@@ -149,11 +149,10 @@ def __f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
     u = recall_score(y_hat, y_pred, pos_label=1) # u = TPR
     v = recall_score(y_hat, y_pred, pos_label=-1) # v = TNR
     if alpha is not None or beta is not None: # Sec. A.3 in [menon2015learning]
-        if alpha + beta != 1:
-            v = 1 - ((1-alpha)*(1-v) + beta*(1-u) - beta) / (1-alpha-beta)
-            u = 1 - (alpha*(1-v) + (1-beta)*(1-u) - alpha) / (1-alpha-beta)
-        else:
-            print("WARNING: adaptation omitted because alpha={alpha} + beta={beta} == 1")
+        if alpha + beta == 1:
+            raise ValueError(f"Adaptation undefined for alpha={alpha} + beta={beta} == 1")
+        v = 1 - ((1-alpha)*(1-v) + beta*(1-u) - beta) / (1-alpha-beta)
+        u = 1 - (alpha*(1-v) + (1-beta)*(1-u) - alpha) / (1-alpha-beta)
     f = 2 * p * u / (p + (p*u + (1-p)*(1-v))) # Tab. 1 in [narasimhan2014statistical]
     return -f # maximize the function value
 
@@ -174,6 +173,8 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
     pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
         y_hat, y_pred, quantiles, p_minus, p_plus
     ) # estimate all relevant noise quantities
+    if alpha + beta == 1:
+        print(f"ERROR: unique(y_hat)={np.unique(y_hat)}, eta_min={eta_min}, eta_max={eta_max}, pi={pi}, pi_corr={pi_corr}")
 
     if metric == "accuracy": # compute the threshold via Eq. 12 in [menon2015learning]
         phi = lambda z : z / (1 + z)
