@@ -17,25 +17,7 @@ def datasets(is_test_run=False):
     """Yield the names of all evaluated imblearn data sets"""
     if is_test_run:
         return ["yeast_me2", "ecoli"] # small data sets for testing
-    return [ # these data sets have at least 100 instances in the minority class
-        "coil_2000",
-        "satimage",
-        "letter_img",
-        "pen_digits",
-        "protein_homo",
-        "optical_digits",
-        "thyroid_sick",
-        "sick_euthyroid",
-        "mammography",
-        "abalone",
-        "wine_quality",
-        "us_crime",
-        "car_eval_34",
-        "webpage",
-        "isolet",
-        "yeast_ml8",
-        "scene",
-    ]
+    return list(fetch_datasets().keys())
 
 def trial(i_trial, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
     """A single trial of imblearn.main()"""
