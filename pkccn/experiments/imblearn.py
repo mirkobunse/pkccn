@@ -45,7 +45,7 @@ def trial(i_trial, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
     y_pred = { m: np.zeros_like(y) for m in methods.keys() } # method name -> predictions
     for i_trn, i_tst in StratifiedKFold(n_folds, shuffle=True).split(X, y):
         clf.fit(X[i_trn,:], y_ccn[i_trn])
-        y_trn = clf.predict_proba(X[i_trn,:])[:,1]
+        y_trn = clf.oob_decision_function_[:,1]
         y_tst = clf.predict_proba(X[i_tst,:])[:,1]
         for method_name, method in methods.items():
             threshold = method(y_ccn[i_trn], y_trn)
@@ -74,6 +74,8 @@ def main(
         is_test_run = False,
     ):
     print(f"Starting an imblearn experiment to produce {output_path} with seed {seed}")
+    if is_test_run:
+        print("WARNING: this is a test run; results are not meaningful")
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
     np.random.seed(seed)
 
@@ -92,12 +94,7 @@ def main(
         "default (accuracy)":
             Threshold("default", metric="accuracy"),
     }
-    clf = RandomForestClassifier(max_depth=8)
-
-    # reduce the experimental grid for testing?
-    if is_test_run:
-        print("WARNING: this is a test run; results are not meaningful")
-        clf = RandomForestClassifier(max_depth=8, n_estimators=3)
+    clf = RandomForestClassifier(oob_score=True, max_depth=8)
 
     # iterate over all data sets
     results = []
