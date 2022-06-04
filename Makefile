@@ -4,7 +4,13 @@ EXPERIMENTS = \
     results/imblearn_natarajan_low.csv \
     results/imblearn_natarajan_high.csv \
     results/imblearn_natarajan_asymmetric.csv \
-    results/imblearn_natarajan_inverse.csv
+    results/imblearn_natarajan_inverse.csv \
+    results/imblearn_tree_low.csv \
+    results/imblearn_tree_high.csv \
+    results/imblearn_tree_natarajan_low.csv \
+    results/imblearn_tree_natarajan_high.csv \
+    results/imblearn_tree_natarajan_asymmetric.csv \
+    results/imblearn_tree_natarajan_inverse.csv
 
 # plot CD diagrams in Julia
 plots: results/cdd_f1.tex results/cdd_DRAFT.tex results/cdd_lima.tex results/cdd_accuracy.tex
@@ -33,6 +39,19 @@ results/imblearn_natarajan_asymmetric.csv: venv/.EXPERIMENTS pkccn/experiments/i
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.1 0.3
 results/imblearn_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.3 0.1
+
+results/imblearn_tree_low.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
+	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.5 0.1
+results/imblearn_tree_high.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
+	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.5 0.25
+results/imblearn_tree_natarajan_low.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
+	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.2 0.2
+results/imblearn_tree_natarajan_high.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
+	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.4 0.4
+results/imblearn_tree_natarajan_asymmetric.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
+	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.1 0.3
+results/imblearn_tree_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
+	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.3 0.1
 
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
