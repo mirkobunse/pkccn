@@ -314,7 +314,7 @@ def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
     T = __yao_dual_t(y_hat, y_proba)
 
     # sample a grid of noisy thresholds to determine the clean threshold after applying T
-    y_grid = np.arange(.000005, 1, step=.00001)
+    y_grid = np.arange(.00005, 1, step=.0001)
     y_grid = np.stack((1-y_grid, y_grid)).T
     y_T = np.argmax(np.matmul(y_grid, T), axis=1) # clean predictions in [0,1]
     try: # find the smallest noisy prediction for clean class +1
