@@ -327,11 +327,10 @@ def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
         threshold_minus = 0.0
     threshold = (threshold_plus + threshold_minus) / 2
 
-    # alternative, more effective analytical implementation?
-    threshold_inv = np.matmul(np.array([[.5, .5]]), np.linalg.inv(T))[0, 1]
-
     # log and return
     if verbose:
+        # alternative, more effective, analytical threshold?
+        threshold_inv = np.matmul(np.array([[.5, .5]]), np.linalg.inv(T))[0, 1]
         print(
             f"┌ yao_threshold={threshold} -> {np.sum(y_pred>threshold) / len(y_pred)} positive",
             f"└─ threshold_inv={threshold_inv} -> {np.sum(y_pred>threshold_inv) / len(y_pred)} positive",
