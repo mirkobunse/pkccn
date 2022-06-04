@@ -1,7 +1,7 @@
 import numpy as np
 from collections import namedtuple
 from multiprocessing import Pool
-from pkccn import lima_threshold, ThresholdedClassifier
+from pkccn import _minimize, lima_threshold, ThresholdedClassifier
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import BaggingClassifier
 from sklearn.preprocessing import MinMaxScaler
@@ -54,17 +54,23 @@ __Tree = namedtuple("Tree", ["feature", "threshold", "left", "right", "y_pred"])
 def _construct_tree(X, y_hat, p_minus, remaining_depth=None):
     """Recursively construct a tree from noisy labels y_hat"""
     if remaining_depth == 0 or len(X) == 1: # leaf node with fraction of positives?
-        return __Tree(None, None, None, None, np.sum(y_hat==1))
+        return __Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
     scaler = MinMaxScaler()
-    best_split = (0, None, None) # (score, feature, threshold)
+    best_split = (0, None, None) # (loss, feature, threshold)
     for feature in np.random.choice(X.shape[1], int(np.sqrt(X.shape[1]))):
         x = scaler.fit_transform(X[:,feature].reshape(-1,1)).flatten() # map to [0,1]
-        t, score = lima_threshold(y_hat, x, p_minus, return_score=True, n_trials=10)
-        if score > best_split[0]:
-            best_split = (score, feature, scaler.inverse_transform(np.array([[t]]))[0])
-    if best_split[1] is None: # do all splits have a score of 0?
-        return __Tree(None, None, None, None, np.sum(y_hat==1))
-    i_left = X[:,best_split[1]] < best_split[2] # X[:, feature] < threshold
+        alpha = p_minus / (1 - p_minus)
+        t, loss, is_success = _minimize(
+            _split_objective,
+            10, # n_trials
+            None, # random_state
+            args =(y_hat, x, alpha)
+        )
+        if is_success and loss < best_split[0]:
+            best_split = (loss, feature, scaler.inverse_transform(np.array([[t]]))[0])
+    if best_split[1] is None: # do all splits have a loss of 0?
+        return __Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
+    i_left = X[:,best_split[1]] <= best_split[2] # X[:, feature] <= threshold
     i_right = np.logical_not(i_left)
     if remaining_depth is not None:
         remaining_depth -= 1
@@ -76,12 +82,32 @@ def _construct_tree(X, y_hat, p_minus, remaining_depth=None):
         None, # y_pred
     )
 
+def _split_objective(t, y_hat, x, alpha):
+    """Objective function for lima_threshold."""
+    y_left = y_hat[x <= t] # y_left is in [-1, 1]
+    y_right = y_hat[x > t]
+    if len(y_left) == 0 or len(y_right) == 0:
+        return 0. # this threshold does not really split
+    f_side = np.zeros(2) # left and right objective values
+    for i_side, y_side in enumerate([y_left, y_right]):
+        N = len(y_side) # N_plus + N_minus
+        N_plus = np.sum(y_side == 1)
+        N_minus = N - N_plus
+        if N_plus < alpha * N_minus:
+            continue # advance to the next side
+        with np.errstate(divide='ignore', invalid='ignore'):
+            f = N_plus * np.log((1+alpha)/alpha * N_plus/N) + N_minus * np.log((1+alpha) * N_minus/N)
+        if not np.isfinite(f):
+            continue # advance to the next side
+        f_side[i_side] = -np.maximum(f, 0.)
+    return np.min(f_side) # maximize the function value
+
 def _predict_tree(X, tree):
     """Recursively predict X"""
     if tree.feature is None:
         return tree.y_pred * np.ones(len(X))
     y_pred = np.empty(len(X), dtype=int)
-    i_left = X[:,tree.feature] < tree.threshold
+    i_left = X[:,tree.feature] <= tree.threshold
     i_right = np.logical_not(i_left)
     y_pred[i_left] = _predict_tree(X[i_left,:], tree.left)
     y_pred[i_right] = _predict_tree(X[i_right,:], tree.right)

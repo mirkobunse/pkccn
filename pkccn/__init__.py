@@ -85,7 +85,7 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
 
     # optimize
     alpha = p_minus / (1 - p_minus)
-    threshold, value, is_success = __minimize(
+    threshold, value, is_success = _minimize(
         __lima_objective,
         n_trials,
         random_state,
@@ -134,7 +134,7 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
         threshold = 0.5
     elif metric == "f1": # no closed-form solution; optimization is necessary
         p = np.sum(y_hat == 1) / len(y_hat) # class 1 prevalence
-        threshold, value, is_success = __minimize(
+        threshold, value, is_success = _minimize(
             __f1_objective,
             n_trials,
             random_state,
@@ -213,7 +213,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
             (beta * (1-pi)/pi + (1-beta))
         )
     elif metric == "f1": # no closed-form solution; optimization is necessary
-        threshold, value, is_success = __minimize(
+        threshold, value, is_success = _minimize(
             __f1_objective,
             n_trials,
             random_state,
@@ -280,7 +280,7 @@ def mithal_threshold(y_hat, y_pred, quantile=.05, n_trials=100, random_state=Non
 
 
     # choose the threshold, see page 2489 (left column bottom) in [mithal2017rapt]
-    threshold, value, is_success = __minimize(
+    threshold, value, is_success = _minimize(
         __mithal_objective,
         n_trials,
         random_state,
@@ -373,7 +373,7 @@ def __yao_t_matrix(y_pred, filter_outlier=True):
             T[i, j] = y_pred[idx_best, j]
     return T
 
-def __minimize(objective, n_trials, random_state, args=None):
+def _minimize(objective, n_trials, random_state, args=None):
     """Generic multi-start minimization of an objective function for thresholding."""
     if random_state is None:
         rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
