@@ -7,9 +7,11 @@ EXPERIMENTS = \
     results/imblearn_natarajan_inverse.csv
 
 # plot CD diagrams in Julia
-plots: results/cdd_f1.tex results/cdd_lima.tex results/cdd_accuracy.tex
+plots: results/cdd_f1.tex results/cdd_DRAFT.tex results/cdd_lima.tex results/cdd_accuracy.tex
 results/cdd_f1.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric f1 $(EXPERIMENTS)
+results/cdd_DRAFT.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric DRAFT --alpha 0.1 $(EXPERIMENTS)
 results/cdd_lima.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric lima $(EXPERIMENTS)
 results/cdd_accuracy.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
