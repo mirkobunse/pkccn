@@ -161,3 +161,5 @@ class TestThresholdedClassifier(TestCase):
             "mithal",
             method_args = {"random_state": RANDOM_STATE}
         )
+    def test_yao(self):
+        self.__test_method("yao")

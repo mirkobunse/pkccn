@@ -31,8 +31,10 @@ class Threshold:
             return menon_threshold(y_hat, y_pred, **self.method_args)
         elif self.method == "mithal":
             return mithal_threshold(y_hat, y_pred, **self.method_args)
+        elif self.method == "yao":
+            return yao_threshold(y_hat, y_pred, **self.method_args)
         else:
-            raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\"]")
+            raise ValueError(f"method=\"{self.method}\" not in [\"default\", \"menon\", \"mithal\", \"yao\"]")
 
 def lima_score(y_true, y_threshold, p_minus):
     """Scoring function according to Li & Ma."""
@@ -290,6 +292,72 @@ def __mithal_objective(gamma, y_hat, y_pred, beta):
     P_a = np.mean(y_hat[y_pred > gamma]) # P(a = 1 | g(x) > gamma)
     f = (P_a - beta)**2 * P_g
     return - f # maximize the function value
+
+def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
+    """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
+
+    Yao et al. (2020): Dual T: Reducing Estimation Error for Transition Matrix in Label-noise Learning.
+
+    :param y_hat: an array of noisy labels, shape (n,)
+    :param y_pred: an array of soft predictions, shape (n,)
+    :param filter_outlier: whether anchor points are found with a 97 percentile, defaults to True
+    :param verbose: whether additional information should be logged, defaults to False
+    :return: a decision threshold
+    """
+    y_proba = np.stack((1-y_pred, y_pred)).T # convert P(Y=+1) to a predict_proba matrix
+    T = __yao_dual_t(y_hat, y_proba)
+
+    # sample a grid of noisy thresholds to determine the clean threshold after applying T
+    y_grid = np.arange(.00001, 1, step=.00001)
+    y_grid = np.stack((1-y_grid, y_grid)).T
+    y_T = np.argmax(np.matmul(y_grid, T), axis=1) # clean predictions in [0,1]
+    try: # find the smallest noisy prediction for clean class +1
+        threshold_plus = np.min(y_grid[y_T==1, 1])
+    except ValueError:
+        threshold_plus = 1.0
+    try: # find the largest noisy prediction for clean class -1
+        threshold_minus = np.max(y_grid[y_T==0, 1])
+    except ValueError:
+        threshold_minus = 0.0
+    threshold = (threshold_plus + threshold_minus) / 2
+
+    # alternative, more effective analytical implementation?
+    threshold_inv = np.matmul(np.array([[.5, .5]]), np.linalg.inv(T))[0, 1]
+
+    # log and return
+    if verbose:
+        print(
+            f"┌ yao_threshold={threshold} -> {np.sum(y_pred>=threshold) / len(y_pred)} positive",
+            f"└─ threshold_inv={threshold_inv} -> {np.sum(y_pred>=threshold_inv) / len(y_pred)} positive",
+            sep="\n"
+        )
+    return threshold
+
+def __yao_dual_t(y_hat, y_pred, filter_outlier=True):
+    T_spadesuit = np.zeros((2, 2))
+    pred = y_pred.argmax(axis=1)
+    for i in range(len(y_hat)):
+        T_spadesuit[int(pred[i])][int(y_hat[i]==1)]+=1
+    T_spadesuit = np.array(T_spadesuit)
+    sum_matrix = np.tile(T_spadesuit.sum(axis = 1),(2, 1)).transpose()
+    T_spadesuit = T_spadesuit/sum_matrix
+    T_clubsuit = __yao_t_matrix(y_pred, filter_outlier)
+    T_spadesuit = np.nan_to_num(T_spadesuit)
+    return np.matmul(T_clubsuit, T_spadesuit).T
+
+def __yao_t_matrix(y_pred, filter_outlier=True):
+    T = np.empty((2, 2))
+    for i in np.arange(2): # find a 'perfect example' for each class
+        if not filter_outlier:
+            idx_best = np.argmax(y_pred[:, i])
+        else:
+            eta_thresh = np.percentile(y_pred[:, i], 97, method='higher')
+            robust_eta = y_pred[:, i]
+            robust_eta[robust_eta >= eta_thresh] = 0.0
+            idx_best = np.argmax(robust_eta)
+        for j in np.arange(2):
+            T[i, j] = y_pred[idx_best, j]
+    return T
 
 def __minimize(objective, n_trials, random_state, args=None):
     """Generic multi-start minimization of an objective function for thresholding."""
