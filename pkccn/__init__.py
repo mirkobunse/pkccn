@@ -4,15 +4,21 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import recall_score
 
 class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, base_classifier, method, fit_classifier=True, method_args={}):
+    def __init__(self, base_classifier, method, fit_classifier=True, prediction_method="training", method_args={}):
         self.base_classifier = base_classifier
         self.method = method
         self.fit_classifier = fit_classifier
+        self.prediction_method = prediction_method
         self.method_args = method_args
     def fit(self, X, y_hat):
         if self.fit_classifier: # fit the base_classifier with noisy labels y_hat
             self.base_classifier.fit(X, y_hat)
-        y_pred = self.base_classifier.predict_proba(X)[:,1]
+        if self.prediction_method == "oob":
+            y_pred = self.base_classifier.oob_decision_function_[:,1]
+        elif self.prediction_method == "training":
+            y_pred = self.base_classifier.predict_proba(X)[:,1]
+        else:
+            raise ValueError(f"prediction_method={prediction_method} is not valid")
         self.threshold = Threshold(self.method, **self.method_args)(y_hat, y_pred)
         return self
     def predict(self, X):
@@ -308,7 +314,7 @@ def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
     T = __yao_dual_t(y_hat, y_proba)
 
     # sample a grid of noisy thresholds to determine the clean threshold after applying T
-    y_grid = np.arange(.00001, 1, step=.00001)
+    y_grid = np.arange(.000005, 1, step=.00001)
     y_grid = np.stack((1-y_grid, y_grid)).T
     y_T = np.argmax(np.matmul(y_grid, T), axis=1) # clean predictions in [0,1]
     try: # find the smallest noisy prediction for clean class +1
@@ -327,8 +333,8 @@ def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
     # log and return
     if verbose:
         print(
-            f"┌ yao_threshold={threshold} -> {np.sum(y_pred>=threshold) / len(y_pred)} positive",
-            f"└─ threshold_inv={threshold_inv} -> {np.sum(y_pred>=threshold_inv) / len(y_pred)} positive",
+            f"┌ yao_threshold={threshold} -> {np.sum(y_pred>threshold) / len(y_pred)} positive",
+            f"└─ threshold_inv={threshold_inv} -> {np.sum(y_pred>threshold_inv) / len(y_pred)} positive",
             sep="\n"
         )
     return threshold

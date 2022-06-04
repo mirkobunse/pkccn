@@ -5,7 +5,7 @@ from pkccn import __f1_objective as _TestObjectives__f1_objective # unittest nam
 from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier
 from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score as sklearn_f1_score
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import train_test_split
@@ -114,8 +114,9 @@ class TestThresholdedClassifier(TestCase):
         X_trn, X_tst, y_trn, y_tst = fetch_data()
         y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
         clf = ThresholdedClassifier(
-            LogisticRegression(random_state=RANDOM_STATE),
+            RandomForestClassifier(max_depth=4, class_weight="balanced", oob_score=True, random_state=RANDOM_STATE),
             method,
+            prediction_method = "oob",
             method_args = {"verbose": True, **method_args}
         )
         clf.fit(X_trn, y_trn)
