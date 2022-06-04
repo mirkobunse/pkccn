@@ -10,7 +10,12 @@ class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
         self.fit_classifier = fit_classifier
         self.prediction_method = prediction_method
         self.method_args = method_args
-    def fit(self, X, y_hat):
+    def fit(self, X, _y_hat):
+        self.classes_ = np.unique(_y_hat)
+        if len(self.classes_) != 2:
+            raise ValueError(f"More than two classes {self.classes_}")
+        y_hat = np.ones_like(_y_hat, dtype=int)
+        y_hat[_y_hat==self.classes_[0]] = -1 # y_hat in [-1, +1]
         if self.fit_classifier: # fit the base_classifier with noisy labels y_hat
             self.base_classifier.fit(X, y_hat)
         if self.prediction_method == "oob":
@@ -22,7 +27,8 @@ class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
         self.threshold = Threshold(self.method, **self.method_args)(y_hat, y_pred)
         return self
     def predict(self, X):
-        return (self.base_classifier.predict_proba(X)[:,1] > self.threshold).astype(int) * 2 - 1
+        y_pred = (self.base_classifier.predict_proba(X)[:,1] > self.threshold).astype(int)
+        return self.classes_[y_pred]
 
 class Threshold:
     def __init__(self, method, **method_args):
@@ -63,7 +69,7 @@ def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=Non
         raise ValueError(f"if y_pred is None, set both p_minus and p_plus or none of them")
     return -__f1_objective(0, y_true, y_threshold, pi, alpha, beta)
 
-def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, verbose=False):
+def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, return_score=False, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
 
     :param y_hat: an array of noisy labels, shape (n,)
@@ -85,6 +91,7 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
         random_state,
         args = (y_hat, y_pred, alpha)
     )
+    score = np.sqrt(-2*value) # objective function value to lima_score
 
     # log and return
     if not is_success:
@@ -93,9 +100,11 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
         print(
             f"┌ lima_threshold={threshold}",
             f"└┬ p_minus={p_minus}",
-            f" └ lima_value={np.sqrt(-2*value)}",
+            f" └ lima_score={score}",
             sep="\n"
         )
+    if return_score:
+        return threshold, score
     return threshold
 
 def __lima_objective(threshold, y_hat, y_pred, alpha):
