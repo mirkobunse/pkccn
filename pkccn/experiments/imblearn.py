@@ -26,6 +26,7 @@ def trial(trial_seed, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
 
     # cross_val_predict, fitting a separate threshold in each fold
     y_pred = { m: np.zeros_like(y) for m in methods.keys() } # method name -> predictions
+    thresholds = { m: [] for m in methods.keys() } # method name -> thresholds
     for i_trn, i_tst in StratifiedKFold(n_folds, shuffle=True).split(X, y):
         clf.fit(X[i_trn,:], y_ccn[i_trn])
         y_trn = clf.oob_decision_function_[:,1]
@@ -33,6 +34,7 @@ def trial(trial_seed, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
         for method_name, method in methods.items():
             threshold = method(y_ccn[i_trn], y_trn)
             y_pred[method_name][i_tst] = (y_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
+            thresholds[method_name].append(threshold)
 
     # evaluate all predictions
     trial_results = []
@@ -40,6 +42,7 @@ def trial(trial_seed, n_folds, p_minus, p_plus, methods, clf, dataset, X, y):
         trial_results.append({
             "dataset": dataset,
             "method": method_name,
+            "threshold": np.mean(thresholds[method_name]),
             "trial_seed": trial_seed,
             "accuracy": accuracy_score(y, y_method),
             "f1": f1_score(y, y_method),
@@ -80,6 +83,8 @@ def main(
             Threshold("menon", metric="f1"),
         "Mithal et al. (2017; CU-CCN; G measure)":
             Threshold("mithal"),
+        "Yao et al. (2020; CU-CCN; accuracy)":
+            Threshold("yao"),
         "default (accuracy)":
             Threshold("default", metric="accuracy"),
         "default (F1 score)":
@@ -110,6 +115,8 @@ def main(
     # aggregate and store the results
     df = pd.DataFrame(results)
     df = df.groupby(["dataset", "method"], sort=False).agg(
+        threshold = ("threshold", "mean"),
+        threshold_std = ("threshold", "std"),
         accuracy = ("accuracy", "mean"),
         accuracy_std = ("accuracy", "std"),
         f1 = ("f1", "mean"),
