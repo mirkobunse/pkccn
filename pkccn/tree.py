@@ -7,11 +7,12 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.preprocessing import MinMaxScaler
 
 class LiMaRandomForest(BaseEstimator, ClassifierMixin):
-    def __init__(self, p_minus, n_estimators=100, max_depth=None, n_jobs=None):
+    def __init__(self, p_minus, n_estimators=100, max_depth=None, n_jobs=None, random_state=None):
         self.p_minus = p_minus
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.n_jobs = n_jobs
+        self.random_state = random_state
     def fit(self, X, y_hat):
         self.classifier = ThresholdedClassifier(
             BaggingClassifier(
@@ -19,6 +20,7 @@ class LiMaRandomForest(BaseEstimator, ClassifierMixin):
                 self.n_estimators,
                 oob_score = True,
                 n_jobs = self.n_jobs,
+                random_state = self.random_state,
             ),
             "lima",
             prediction_method = "oob",
@@ -32,16 +34,21 @@ class LiMaRandomForest(BaseEstimator, ClassifierMixin):
         return self.classifier.predict(X)
 
 class LiMaTree(BaseEstimator, ClassifierMixin):
-    def __init__(self, p_minus, max_depth=None):
+    def __init__(self, p_minus, max_depth=None, random_state=None):
         self.p_minus = p_minus
         self.max_depth = max_depth
+        self.random_state = random_state
     def fit(self, X, _y_hat):
         self.classes_ = np.unique(_y_hat)
         if len(self.classes_) != 2:
             raise ValueError(f"More than two classes {self.classes_}")
         y_hat = np.ones_like(_y_hat, dtype=int)
         y_hat[_y_hat==self.classes_[0]] = -1 # y_hat in [-1, +1]
-        self.tree = _construct_tree(X, y_hat, self.p_minus, self.max_depth)
+        if self.random_state is None:
+            rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
+        else:
+            rng = np.random.RandomState(self.random_state) # local RNG with fixed seed
+        self.tree = _construct_tree(X, y_hat, rng, self.p_minus, self.max_depth)
         return self
     def predict_proba(self, X):
         y_pred = _predict_tree(X, self.tree)
@@ -51,19 +58,19 @@ class LiMaTree(BaseEstimator, ClassifierMixin):
         return self.classes_[y_pred]
 
 _Tree = namedtuple("Tree", ["feature", "threshold", "left", "right", "y_pred"])
-def _construct_tree(X, y_hat, p_minus, remaining_depth=None):
+def _construct_tree(X, y_hat, rng, p_minus, remaining_depth=None):
     """Recursively construct a tree from noisy labels y_hat"""
     if remaining_depth == 0 or len(X) == 1: # leaf node with fraction of positives?
         return _Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
     scaler = MinMaxScaler()
     best_split = (0, None, None) # (loss, feature, threshold)
-    for feature in np.random.choice(X.shape[1], int(np.sqrt(X.shape[1]))):
+    for feature in rng.choice(X.shape[1], int(np.sqrt(X.shape[1]))):
         x = scaler.fit_transform(X[:,feature].reshape(-1,1)).flatten() # map to [0,1]
         alpha = p_minus / (1 - p_minus)
         t, loss, is_success = _minimize(
             _split_objective,
             10, # n_trials
-            None, # random_state
+            rng,
             args =(y_hat, x, alpha)
         )
         if is_success and loss < best_split[0]:
@@ -77,8 +84,8 @@ def _construct_tree(X, y_hat, p_minus, remaining_depth=None):
     return _Tree(
         best_split[1], # feature
         best_split[2], # threshold
-        _construct_tree(X[i_left,:], y_hat[i_left], p_minus, remaining_depth),
-        _construct_tree(X[i_right,:], y_hat[i_right], p_minus, remaining_depth),
+        _construct_tree(X[i_left,:], y_hat[i_left], rng, p_minus, remaining_depth),
+        _construct_tree(X[i_right,:], y_hat[i_right], rng, p_minus, remaining_depth),
         None, # y_pred
     )
 

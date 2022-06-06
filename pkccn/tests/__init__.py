@@ -168,7 +168,7 @@ class TestThresholdedClassifier(TestCase):
         print()
         X_trn, X_tst, y_trn, y_tst = fetch_data()
         y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
-        clf = LiMaRandomForest(p_minus, n_estimators=32, max_depth=4, n_jobs=-1)
+        clf = LiMaRandomForest(p_minus, n_estimators=32, max_depth=8, n_jobs=-1, random_state=RANDOM_STATE)
         clf.fit(X_trn, y_trn)
         accuracy = clf.score(X_tst, y_tst)
         f1 = sklearn_f1_score(y_tst, clf.predict(X_tst))

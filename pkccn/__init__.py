@@ -373,12 +373,12 @@ def _yao_t_matrix(y_pred, filter_outlier=True):
             T[i, j] = y_pred[idx_best, j]
     return T
 
-def _minimize(objective, n_trials, random_state, args=None):
+def _minimize(objective, n_trials, rng, args=None):
     """Generic multi-start minimization of an objective function for thresholding."""
-    if random_state is None:
+    if rng is None:
         rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
-    else:
-        rng = np.random.RandomState(random_state) # local RNG with fixed seed
+    elif isinstance(rng, int):
+        rng = np.random.RandomState(rng) # local RNG with fixed seed
     best = optimize.minimize_scalar(
         objective,
         bounds = (0.0, 1.0),
