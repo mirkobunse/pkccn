@@ -13,7 +13,7 @@ from unittest import TestCase
 
 RANDOM_STATE = 876
 
-def fetch_data(name='ecoli', random_state=RANDOM_STATE):
+def fetch_data(name='pen_digits', random_state=RANDOM_STATE):
     dataset = fetch_datasets()[name]
     X_trn, X_tst, y_trn, y_tst = train_test_split(
         dataset.data,
@@ -114,7 +114,7 @@ class TestThresholdedClassifier(TestCase):
         X_trn, X_tst, y_trn, y_tst = fetch_data()
         y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
         clf = ThresholdedClassifier(
-            RandomForestClassifier(max_depth=4, class_weight="balanced", oob_score=True, random_state=RANDOM_STATE),
+            RandomForestClassifier(max_depth=4, class_weight="balanced", oob_score=True, n_jobs=-1, random_state=RANDOM_STATE),
             method,
             prediction_method = "oob",
             method_args = {"verbose": True, **method_args}
@@ -168,7 +168,7 @@ class TestThresholdedClassifier(TestCase):
         print()
         X_trn, X_tst, y_trn, y_tst = fetch_data()
         y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
-        clf = LiMaRandomForest(p_minus, n_estimators=32, max_depth=8, n_jobs=-1, random_state=RANDOM_STATE)
+        clf = LiMaRandomForest(p_minus, max_depth=4, n_jobs=-1, random_state=RANDOM_STATE)
         clf.fit(X_trn, y_trn)
         accuracy = clf.score(X_tst, y_tst)
         f1 = sklearn_f1_score(y_tst, clf.predict(X_tst))

@@ -48,7 +48,8 @@ class LiMaTree(BaseEstimator, ClassifierMixin):
             rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
         else:
             rng = np.random.RandomState(self.random_state) # local RNG with fixed seed
-        self.tree = _construct_tree(X, y_hat, rng, self.p_minus, self.max_depth)
+        alpha = self.p_minus / (1 - self.p_minus)
+        self.tree = _construct_tree(X, y_hat, rng, alpha, self.max_depth)
         return self
     def predict_proba(self, X):
         y_pred = _predict_tree(X, self.tree)
@@ -58,15 +59,15 @@ class LiMaTree(BaseEstimator, ClassifierMixin):
         return self.classes_[y_pred]
 
 _Tree = namedtuple("Tree", ["feature", "threshold", "left", "right", "y_pred"])
-def _construct_tree(X, y_hat, rng, p_minus, remaining_depth=None):
+def _construct_tree(X, y_hat, rng, alpha, max_depth=None, loss=0.):
     """Recursively construct a tree from noisy labels y_hat"""
-    if remaining_depth == 0 or len(X) == 1: # leaf node with fraction of positives?
-        return _Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
+    y_pred = 1 if np.sum(y_hat==1) / len(y_hat) > .5 else 0
+    if max_depth == 0 or len(X) == 1: # leaf node with fraction of positives?
+        return _Tree(None, None, None, None, y_pred)
     scaler = MinMaxScaler()
-    best_split = (0, None, None) # (loss, feature, threshold)
+    best_split = (loss, None, None) # (loss, feature, threshold) with loss of parent
     for feature in rng.choice(X.shape[1], int(np.sqrt(X.shape[1]))):
         x = scaler.fit_transform(X[:,feature].reshape(-1,1)).flatten() # map to [0,1]
-        alpha = p_minus / (1 - p_minus)
         t, loss, is_success = _minimize(
             _split_objective,
             10, # n_trials
@@ -75,17 +76,17 @@ def _construct_tree(X, y_hat, rng, p_minus, remaining_depth=None):
         )
         if is_success and loss < best_split[0]:
             best_split = (loss, feature, scaler.inverse_transform(np.array([[t]]))[0])
-    if best_split[1] is None: # do all splits have a loss of 0?
-        return _Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
+    if best_split[1] is None: # do all splits have larger loss than their parent?
+        return _Tree(None, None, None, None, y_pred)
     i_left = X[:,best_split[1]] <= best_split[2] # X[:, feature] <= threshold
     i_right = np.logical_not(i_left)
-    if remaining_depth is not None:
-        remaining_depth -= 1
+    if max_depth is not None:
+        max_depth -= 1
     return _Tree(
         best_split[1], # feature
         best_split[2], # threshold
-        _construct_tree(X[i_left,:], y_hat[i_left], rng, p_minus, remaining_depth),
-        _construct_tree(X[i_right,:], y_hat[i_right], rng, p_minus, remaining_depth),
+        _construct_tree(X[i_left,:], y_hat[i_left], rng, alpha, max_depth, best_split[0]),
+        _construct_tree(X[i_right,:], y_hat[i_right], rng, alpha, max_depth, best_split[0]),
         None, # y_pred
     )
 
