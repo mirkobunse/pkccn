@@ -4,6 +4,7 @@ from fact.analysis.statistics import li_ma_significance
 from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier
 from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
+from pkccn.tree import _depth, LiMaRandomForest
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score as sklearn_f1_score
 from sklearn.metrics import balanced_accuracy_score
@@ -163,3 +164,19 @@ class TestThresholdedClassifier(TestCase):
         )
     def test_yao(self):
         self._test_method("yao")
+    def test_LiMaRandomForest(self, p_minus=.5, p_plus=.1):
+        print()
+        X_trn, X_tst, y_trn, y_tst = fetch_data()
+        y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
+        clf = LiMaRandomForest(p_minus, n_estimators=32, max_depth=4, n_jobs=-1)
+        clf.fit(X_trn, y_trn)
+        accuracy = clf.score(X_tst, y_tst)
+        f1 = sklearn_f1_score(y_tst, clf.predict(X_tst))
+        print(f"LiMaRandomForest achieves CCN accuracy={accuracy:.3f}, f1={f1:.3f}")
+
+        # inspect tree depths
+        trees = clf.classifier.base_classifier.estimators_
+        depths = []
+        for tree in trees:
+            depths.append(_depth(tree.tree))
+        print(f"tree depths={depths}")

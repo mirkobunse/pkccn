@@ -112,3 +112,9 @@ def _predict_tree(X, tree):
     y_pred[i_left] = _predict_tree(X[i_left,:], tree.left)
     y_pred[i_right] = _predict_tree(X[i_right,:], tree.right)
     return y_pred
+
+def _depth(tree):
+    """Recursively determine the depth of a tree"""
+    if tree.feature is None:
+        return 0
+    return max(_depth(tree.left), _depth(tree.right)) + 1
