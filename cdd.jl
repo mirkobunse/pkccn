@@ -31,41 +31,29 @@ end
 function main(args = parse_commandline())
     @info "Generating plots from $(length(args["input"])) input files" args["tex"] args["pdf"] args["input"] args["alpha"]
 
-    # collect results of all input CSV files
-    sequence = Pair{String, Vector{Pair{String, Vector}}}[] # sequence of CD diagrams
-    df = DataFrame() # concatenation of all results
+    # collect the results of all input CSV files
+    df = DataFrame()
     for input in args["input"]
-        input_df = CSV.read(input, DataFrame)
-        df = vcat(df, input_df)
+        df = vcat(df, CSV.read(input, DataFrame), cols=:union)
+    end
 
-        # select CDD methods based on the metric
-        metric = args["metric"]
-        if metric ∈ ["f1", "lima"]
-            input_df = input_df[[!occursin("accuracy", x) for x in input_df[!, :method]], :]
-        elseif metric == "accuracy"
-            input_df = input_df[[!occursin("F1 score", x) for x in input_df[!, :method]], :]
-        elseif metric ∈ ["all_f1", "all_lima", "all_accuracy"]
-            metric = metric[5:end] # remove the "all_" prefix; keep all methods
-        elseif metric == "DRAFT"
-            input_df = input_df[[x ∈ [
-                "Li \\& Ma threshold (ours; PK-CCN)",
-                "Menon et al. (2015; CU-CCN; accuracy)",
-                "Mithal et al. (2017; CU-CCN; G measure)"
-            ] for x in input_df[!, :method]], :]
-            metric = "f1"
-        else
-            throw(ArgumentError("metric=\"$metric\" is not valid"))
-        end
-
-        # collect the plot arguments
-        title = "\$p_- = $(input_df[1, :p_minus]), \\, p_+ = $(input_df[1, :p_plus])\$"
-        pairs = CriticalDifferenceDiagrams._to_pairs(
-            input_df,
-            :method,  # the name of the treatment column
-            :dataset, # the name of the observation column
-            Symbol(metric) # the name of the outcome column
-        )
-        push!(sequence, title => pairs)
+    # select CDD methods based on the desired metric
+    metric = args["metric"]
+    if metric ∈ ["f1", "lima"]
+        df = df[[!occursin("accuracy", x) for x in df[!, :method]], :]
+    elseif metric == "accuracy"
+        df = df[[!occursin("F1 score", x) for x in df[!, :method]], :]
+    elseif metric ∈ ["all_f1", "all_lima", "all_accuracy"]
+        metric = metric[5:end] # remove the "all_" prefix; keep all methods
+    elseif metric == "DRAFT"
+        df = df[[x ∈ [
+            "Li \\& Ma threshold (ours; PK-CCN)",
+            "Menon et al. (2015; CU-CCN; accuracy)",
+            "Mithal et al. (2017; CU-CCN; G measure)"
+        ] for x in df[!, :method]], :]
+        metric = "f1"
+    else
+        throw(ArgumentError("metric=\"$metric\" is not valid"))
     end
 
     # # print a table of average scores;
@@ -100,8 +88,22 @@ function main(args = parse_commandline())
     #     :value
     # )
 
-    # generate the 2D critical difference diagram
-    plot = CriticalDifferenceDiagrams.plot(
+    # generate a sequence of CD diagrams
+    sequence = Pair{String, Vector{Pair{String, Vector}}}[]
+    for ((p_minus, p_plus), gdf) in pairs(groupby(df, [:p_minus, :p_plus]))
+        if length(string(p_plus)) == 3
+            p_plus = "$(p_plus)\\hphantom{0}" # left-align tick marks
+        end
+        title = "\$p_- = $(p_minus), \\, p_+ = $(p_plus)\$"
+        pairs = CriticalDifferenceDiagrams._to_pairs(
+            gdf,
+            :method,  # the name of the treatment column
+            :dataset, # the name of the observation column
+            Symbol(metric) # the name of the outcome column
+        )
+        push!(sequence, title => pairs)
+    end
+    plot = CriticalDifferenceDiagrams.plot( # generate the 2D diagram
         sequence...;
         maximize_outcome = true,
         alpha = args["alpha"]
@@ -110,7 +112,7 @@ function main(args = parse_commandline())
     # style it
     plot.style = join([
         plot.style,
-        "cycle list={{tu01,mark=*},{tu04,mark=diamond*},{tu02,mark=triangle,semithick,densely dotted},{tu03,mark=square,semithick},{tu05,mark=pentagon,semithick},{tu06,mark=oplus,semithick},{tu07,mark=halfcircle,semithick},{tu04,mark=o},{tu02,mark=diamond, semithick},{tu03,mark=triangle,semithick}}",
+        "cycle list={{tu01,mark=*},{tu04,mark=diamond*},{tu02,mark=halfcircle,semithick,densely dotted},{tu03,mark=square,semithick},{tu05,mark=pentagon,semithick},{tu06,mark=oplus,semithick},{tu07,mark=triangle*},{tu04,mark=o},{tu02,mark=diamond, semithick},{tu03,mark=triangle,semithick}}",
         "xticklabel style={font=\\small}",
         "yticklabel style={font=\\small}",
         "xlabel style={font=\\small}",
