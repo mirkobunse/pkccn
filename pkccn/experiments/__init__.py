@@ -41,13 +41,13 @@ class MLPClassifier(BaseEstimator, ClassifierMixin):
         best = (np.inf, None) # (loss, module)
         for i in range(self.n_repeats):
             # start = time()
-            current = self.__fit_once(X, y, w)
+            current = self._fit_once(X, y, w)
             # print(f"Loss {i}/{self.n_repeats}: {current[0]:.5f} in {time() - start:.2f}s")
             if current[0] < best[0]:
                 best = current
         self.module = best[1]
         return self
-    def __fit_once(self, X, y, w):
+    def _fit_once(self, X, y, w):
         module = MLPModule(
             X.shape[1],
             self.activation,

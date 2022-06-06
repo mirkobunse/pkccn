@@ -50,7 +50,7 @@ class Threshold:
 
 def lima_score(y_true, y_threshold, p_minus):
     """Scoring function according to Li & Ma."""
-    return np.sqrt(-2*__lima_objective(0, y_true, y_threshold, p_minus / (1 - p_minus)))
+    return np.sqrt(-2*_lima_objective(0, y_true, y_threshold, p_minus / (1 - p_minus)))
 
 def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=None, p_plus=None):
     """F1 scoring function with CCN support."""
@@ -58,16 +58,16 @@ def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=Non
     beta = None
     pi = sum(y_true == 1) / len(y_true)
     if y_pred is not None:
-        pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+        pi_corr, pi, alpha, beta, eta_min, eta_max = _menon_quantities(
             y_true, y_pred, quantiles, p_minus, p_plus
         ) # estimate all quantities from y_pred
     elif p_minus is not None and p_plus is not None:
-        pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+        pi_corr, pi, alpha, beta, eta_min, eta_max = _menon_quantities(
             y_true, y_threshold, quantiles, p_minus, p_plus
         ) # define the quantities from p_minus and p_plus (ignore quantiles)
     elif p_minus is not None or p_plus is not None:
         raise ValueError(f"if y_pred is None, set both p_minus and p_plus or none of them")
-    return -__f1_objective(0, y_true, y_threshold, pi, alpha, beta)
+    return -_f1_objective(0, y_true, y_threshold, pi, alpha, beta)
 
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, return_score=False, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
@@ -86,7 +86,7 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
     # optimize
     alpha = p_minus / (1 - p_minus)
     threshold, value, is_success = _minimize(
-        __lima_objective,
+        _lima_objective,
         n_trials,
         random_state,
         args = (y_hat, y_pred, alpha)
@@ -107,7 +107,7 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
         return threshold, score
     return threshold
 
-def __lima_objective(threshold, y_hat, y_pred, alpha):
+def _lima_objective(threshold, y_hat, y_pred, alpha):
     """Objective function for lima_threshold."""
     y_hat = y_hat[y_pred > threshold] # y_hat is in [-1, 1]
     N = len(y_hat) # N_plus + N_minus
@@ -135,7 +135,7 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
     elif metric == "f1": # no closed-form solution; optimization is necessary
         p = np.sum(y_hat == 1) / len(y_hat) # class 1 prevalence
         threshold, value, is_success = _minimize(
-            __f1_objective,
+            _f1_objective,
             n_trials,
             random_state,
             args = (y_hat, y_pred, p)
@@ -160,7 +160,7 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
         )
     return threshold
 
-def __f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
+def _f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
     """Objective function for default_threshold with metric="f1"."""
     y_pred = (y_pred > threshold).astype(int) * 2 - 1
     u = recall_score(y_hat, y_pred, pos_label=1) # u = TPR
@@ -187,11 +187,11 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
     :param p_plus: optional noise rate, defaults to None
     :return: a decision threshold
     """
-    pi_corr, pi, alpha, beta, eta_min, eta_max = __menon_quantities(
+    pi_corr, pi, alpha, beta, eta_min, eta_max = _menon_quantities(
         y_hat, y_pred, quantiles, p_minus, p_plus
     ) # estimate all relevant noise quantities
 
-    # handle a corner case in which the CCN adaptation in __f1_objective is undefined
+    # handle a corner case in which the CCN adaptation in _f1_objective is undefined
     if pi == 0: # class +1 is estimated to occur _never_
         if verbose:
             print(
@@ -214,7 +214,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
         )
     elif metric == "f1": # no closed-form solution; optimization is necessary
         threshold, value, is_success = _minimize(
-            __f1_objective,
+            _f1_objective,
             n_trials,
             random_state,
             args = (y_hat, y_pred, pi, alpha, beta)
@@ -237,7 +237,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
         )
     return threshold
 
-def __menon_quantities(y_hat, y_pred, quantiles=[.01, .99], p_minus=None, p_plus=None):
+def _menon_quantities(y_hat, y_pred, quantiles=[.01, .99], p_minus=None, p_plus=None):
     """Estimate the quantities employed by Menon et al."""
     pi_corr = sum(y_hat == 1) / len(y_hat) # noisy base rate
 
@@ -281,7 +281,7 @@ def mithal_threshold(y_hat, y_pred, quantile=.05, n_trials=100, random_state=Non
 
     # choose the threshold, see page 2489 (left column bottom) in [mithal2017rapt]
     threshold, value, is_success = _minimize(
-        __mithal_objective,
+        _mithal_objective,
         n_trials,
         random_state,
         args = (y_hat, y_pred, beta)
@@ -299,7 +299,7 @@ def mithal_threshold(y_hat, y_pred, quantile=.05, n_trials=100, random_state=Non
         )
     return threshold
 
-def __mithal_objective(gamma, y_hat, y_pred, beta):
+def _mithal_objective(gamma, y_hat, y_pred, beta):
     """Objective function for mithal_threshold."""
     P_g = np.mean(y_pred > gamma) # P(g(x) > gamma)
     if P_g == 0.0:
@@ -320,7 +320,7 @@ def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
     :return: a decision threshold
     """
     y_proba = np.stack((1-y_pred, y_pred)).T # convert P(Y=+1) to a predict_proba matrix
-    T = __yao_dual_t(y_hat, y_proba)
+    T = _yao_dual_t(y_hat, y_proba)
 
     # sample a grid of noisy thresholds to determine the clean threshold after applying T
     y_grid = np.arange(.00005, 1, step=.0001)
@@ -347,7 +347,7 @@ def yao_threshold(y_hat, y_pred, filter_outlier=True, verbose=False):
         )
     return threshold
 
-def __yao_dual_t(y_hat, y_pred, filter_outlier=True):
+def _yao_dual_t(y_hat, y_pred, filter_outlier=True):
     T_spadesuit = np.zeros((2, 2))
     pred = y_pred.argmax(axis=1)
     for i in range(len(y_hat)):
@@ -355,11 +355,11 @@ def __yao_dual_t(y_hat, y_pred, filter_outlier=True):
     T_spadesuit = np.array(T_spadesuit)
     sum_matrix = np.tile(T_spadesuit.sum(axis = 1),(2, 1)).transpose()
     T_spadesuit = T_spadesuit/sum_matrix
-    T_clubsuit = __yao_t_matrix(y_pred, filter_outlier)
+    T_clubsuit = _yao_t_matrix(y_pred, filter_outlier)
     T_spadesuit = np.nan_to_num(T_spadesuit)
     return np.matmul(T_clubsuit, T_spadesuit).T
 
-def __yao_t_matrix(y_pred, filter_outlier=True):
+def _yao_t_matrix(y_pred, filter_outlier=True):
     T = np.empty((2, 2))
     for i in np.arange(2): # find a 'perfect example' for each class
         if not filter_outlier:

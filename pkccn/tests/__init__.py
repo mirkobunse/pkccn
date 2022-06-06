@@ -1,7 +1,6 @@
 import numpy as np
 from imblearn.datasets import fetch_datasets
 from fact.analysis.statistics import li_ma_significance
-from pkccn import __f1_objective as _TestObjectives__f1_objective # unittest name mangling
 from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier
 from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
@@ -109,7 +108,7 @@ class TestOptimizations(TestCase):
                 self.assertAlmostEqual(lima_T[best_i], lima_t) # compare scores
 
 class TestThresholdedClassifier(TestCase):
-    def __test_method(self, method, p_minus=.5, p_plus=.1, method_args={}):
+    def _test_method(self, method, p_minus=.5, p_plus=.1, method_args={}):
         print() # empty line to go beyond a leading "."
         X_trn, X_tst, y_trn, y_tst = fetch_data()
         y_trn = inject_ccn(y_trn, p_minus, p_plus, random_state=RANDOM_STATE)
@@ -124,43 +123,43 @@ class TestThresholdedClassifier(TestCase):
         f1 = sklearn_f1_score(y_tst, clf.predict(X_tst))
         print(f"method=\"{method}\" achieves CCN accuracy={accuracy:.3f}, f1={f1:.3f}")
     def test_lima(self):
-        self.__test_method(
+        self._test_method(
             "lima",
             method_args = {"random_state": RANDOM_STATE, "p_minus": .5}
         )
     def test_default_accuracy(self):
-        self.__test_method("default")
+        self._test_method("default")
     def test_default_f1(self):
-        self.__test_method(
+        self._test_method(
             "default",
             method_args = {"metric": "f1"}
         )
     def test_menon_accuracy(self):
-        self.__test_method("menon")
+        self._test_method("menon")
     def test_menon_f1(self):
-        self.__test_method(
+        self._test_method(
             "menon",
             method_args = {"metric": "f1"}
         )
     def test_ckccn_menon_f1(self):
-        self.__test_method(
+        self._test_method(
             "menon",
             method_args = {"metric": "f1", "p_minus": .5, "p_plus": .1}
         )
     def test_pkccn_menon(self):
-        self.__test_method(
+        self._test_method(
             "menon",
             method_args = {"p_minus": .5}
         )
     def test_ckccn_menon(self):
-        self.__test_method(
+        self._test_method(
             "menon",
             method_args = {"p_minus": .5, "p_plus": .1}
         )
     def test_mithal(self):
-        self.__test_method(
+        self._test_method(
             "mithal",
             method_args = {"random_state": RANDOM_STATE}
         )
     def test_yao(self):
-        self.__test_method("yao")
+        self._test_method("yao")

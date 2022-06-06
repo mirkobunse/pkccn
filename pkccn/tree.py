@@ -50,11 +50,11 @@ class LiMaTree(BaseEstimator, ClassifierMixin):
         y_pred = (self.predict_proba(X)[:,1] > 0.5).astype(int)
         return self.classes_[y_pred]
 
-__Tree = namedtuple("Tree", ["feature", "threshold", "left", "right", "y_pred"])
+_Tree = namedtuple("Tree", ["feature", "threshold", "left", "right", "y_pred"])
 def _construct_tree(X, y_hat, p_minus, remaining_depth=None):
     """Recursively construct a tree from noisy labels y_hat"""
     if remaining_depth == 0 or len(X) == 1: # leaf node with fraction of positives?
-        return __Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
+        return _Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
     scaler = MinMaxScaler()
     best_split = (0, None, None) # (loss, feature, threshold)
     for feature in np.random.choice(X.shape[1], int(np.sqrt(X.shape[1]))):
@@ -69,12 +69,12 @@ def _construct_tree(X, y_hat, p_minus, remaining_depth=None):
         if is_success and loss < best_split[0]:
             best_split = (loss, feature, scaler.inverse_transform(np.array([[t]]))[0])
     if best_split[1] is None: # do all splits have a loss of 0?
-        return __Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
+        return _Tree(None, None, None, None, np.sum(y_hat==1) / len(y_hat))
     i_left = X[:,best_split[1]] <= best_split[2] # X[:, feature] <= threshold
     i_right = np.logical_not(i_left)
     if remaining_depth is not None:
         remaining_depth -= 1
-    return __Tree(
+    return _Tree(
         best_split[1], # feature
         best_split[2], # threshold
         _construct_tree(X[i_left,:], y_hat[i_left], p_minus, remaining_depth),

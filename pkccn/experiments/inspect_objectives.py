@@ -22,7 +22,7 @@ def trial(dataset, fold, trial_seed, n_folds, p_minus, p_plus, clf):
     y = imblearn_dataset.target
     np.random.seed(trial_seed) # reproduce the imblearn experiment
     y_ccn = inject_ccn(y, p_minus, p_plus)
-    i_trn, i_tst = __get_index_of_generator(
+    i_trn, i_tst = _get_index_of_generator(
         StratifiedKFold(n_folds, shuffle=True).split(X, y),
         fold
     ) # select a single fold
@@ -39,15 +39,15 @@ def trial(dataset, fold, trial_seed, n_folds, p_minus, p_plus, clf):
             "threshold": t,
             #
             # noisy training performances (estimating the clean F1 score)
-            "f1_trn_ckccn": __f1_score(y_ccn[i_trn], y_t_trn, y_trn, p_minus, p_plus),
-            "f1_trn_pkccn": __f1_score(y_ccn[i_trn], y_t_trn, y_trn, p_minus),
-            "f1_trn_cuccn": __f1_score(y_ccn[i_trn], y_t_trn, y_trn),
+            "f1_trn_ckccn": _f1_score(y_ccn[i_trn], y_t_trn, y_trn, p_minus, p_plus),
+            "f1_trn_pkccn": _f1_score(y_ccn[i_trn], y_t_trn, y_trn, p_minus),
+            "f1_trn_cuccn": _f1_score(y_ccn[i_trn], y_t_trn, y_trn),
             "lima_trn": lima_score(y_ccn[i_trn], y_t_trn, p_minus),
             #
             # noisy test performances
-            "f1_tst_ckccn": __f1_score(y_ccn[i_tst], y_t_tst, y_tst, p_minus, p_plus),
-            "f1_tst_pkccn": __f1_score(y_ccn[i_tst], y_t_tst, y_tst, p_minus),
-            "f1_tst_cuccn": __f1_score(y_ccn[i_tst], y_t_tst, y_tst),
+            "f1_tst_ckccn": _f1_score(y_ccn[i_tst], y_t_tst, y_tst, p_minus, p_plus),
+            "f1_tst_pkccn": _f1_score(y_ccn[i_tst], y_t_tst, y_tst, p_minus),
+            "f1_tst_cuccn": _f1_score(y_ccn[i_tst], y_t_tst, y_tst),
             "lima_tst": lima_score(y_ccn[i_tst], y_t_tst, p_minus),
             #
             # clean training and test performances (lima_score is undefined if p_minus==0)
@@ -62,7 +62,7 @@ def trial(dataset, fold, trial_seed, n_folds, p_minus, p_plus, clf):
     df['trial_seed'] = trial_seed
     return df
 
-def __f1_score(y_hat, y_t, y_pred, p_minus=None, p_plus=None):
+def _f1_score(y_hat, y_t, y_pred, p_minus=None, p_plus=None):
     try:
         return f1_score(y_hat, y_t, y_pred, p_minus=p_minus, p_plus=p_plus)
     except ValueError:
@@ -107,7 +107,7 @@ def main(
     df.to_csv(output_path) # also store a file with all data sets
     print(f"{df.shape[0]} results succesfully stored at {output_path}")
 
-def __get_index_of_generator(generator, index):
+def _get_index_of_generator(generator, index):
     """Get generator[index] when the generator does not allow indexing."""
     for i, item in enumerate(generator):
         if i != index:
