@@ -31,7 +31,7 @@ setup(
     zip_safe=False,
     test_suite='nose.collector',
     extras_require = {
-        'experiments' : ['imbalanced-learn', 'pandas', 'sklearn', 'torch', 'tqdm'],
-        'tests' : ['imbalanced-learn', 'nose', 'sklearn', 'torch', 'pyfact']
+        'experiments' : ['imbalanced-learn', 'pandas', 'pyfact', 'sklearn', 'torch', 'tqdm'],
+        'tests' : ['imbalanced-learn', 'nose', 'pyfact', 'sklearn', 'torch']
     }
 )
