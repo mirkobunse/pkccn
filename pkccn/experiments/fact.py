@@ -5,6 +5,7 @@ import pandas as pd
 from functools import partial
 from multiprocessing import Pool
 from pkccn import lima_score, Threshold
+from pkccn.tree import LiMaRandomForest
 from fact.io import read_data as fact_read_data
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GroupKFold
@@ -113,7 +114,7 @@ def main(
     if fake_labels:
         p_minus = 1 / 5
 
-    # configure the thresholding methods, the base classifier, and read the noisy data
+    # configure the thresholding methods and the base classifier
     methods = {
         "Li \& Ma threshold (ours; PK-CCN)":
             Threshold("lima", p_minus=p_minus),
@@ -127,21 +128,51 @@ def main(
             Threshold("default", metric="f1"),
     }
     clf = RandomForestClassifier(oob_score=True, max_depth=8)
+
+    # read the noisy data
     print("Loading the data...")
     X, y_hat, group = read_fact(fake_labels)
+    print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
-    # parallelize over repetitions
+    # experiment with thresholding methods: parallelize over repetitions
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     with Pool() as pool:
         trial_Xyg = partial(trial, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group, p_minus=p_minus)
         trial_results = tqdm(
             pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
+            desc = f"Thresholding",
             total = n_repetitions,
             ncols = 80
         )
         for result in trial_results:
             results.extend(result)
+
+    # experiment with the Li&Ma tree: parallelize over ensemble members
+    clf = LiMaRandomForest(p_minus, max_depth=8, n_jobs=-1)
+    if is_test_run:
+        clf.max_depth = 2
+        clf.n_estimators = 32
+    progressbar = tqdm(
+        trial_seeds, # use the same seeds as above
+        desc = f"Li & Ma tree",
+        total = n_repetitions,
+        ncols = 80
+    )
+    for trial_seed in progressbar:
+        np.random.seed(trial_seed)
+        y_pred = np.zeros_like(y_hat)
+        thresholds = []
+        for i_trn, i_tst in GroupKFold(len(np.unique(group))).split(X, y_hat, group):
+            clf.fit(X[i_trn,:], y_hat[i_trn])
+            y_pred[i_tst] = clf.predict(X[i_tst,:])
+            thresholds.append(clf.threshold)
+        results.append({
+            "method": "Li \& Ma tree (ours; PK-CCN)",
+            "threshold": np.mean(thresholds),
+            "trial_seed": trial_seed,
+            "lima": lima_score(y_hat, y_pred, p_minus),
+        })
 
     # aggregate and store the results
     df = pd.DataFrame(results)

@@ -11,8 +11,7 @@ EXPERIMENTS = \
     results/imblearn_tree_natarajan_high.csv \
     results/imblearn_tree_natarajan_asymmetric.csv \
     results/imblearn_tree_natarajan_inverse.csv \
-    results/fact.csv \
-    results/fact_tree.csv
+    results/fact.csv
 DATA = \
     data/fact_dl2.hdf5 \
     data/fact_dl3.hdf5
@@ -62,14 +61,14 @@ results/imblearn_tree_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments
 
 results/fact.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@
-results/fact_tree.csv: venv/.EXPERIMENTS pkccn/experiments/fact_tree.py $(DATA)
-	venv/bin/python -m pkccn.experiments.fact_tree $@
 
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 3 --is_test_run
 results/imblearn_tree_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
 	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.5 0.1 --n_folds 2 --n_repetitions 3 --is_test_run
+results/fact_test.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
+	venv/bin/python -m pkccn.experiments.fact $@ --n_repetitions 3 --is_test_run
 
 # inspection of the data sets
 results/inspect_datasets.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_datasets.py
