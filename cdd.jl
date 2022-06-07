@@ -18,7 +18,7 @@ function parse_commandline()
         "--alpha", "-a"
             help = "the alpha value for the hypothesis tests"
             arg_type = Float64
-            default = 0.01
+            default = 0.05
         "input"
             help = "the paths of all input CSV files"
             required = true
@@ -39,6 +39,18 @@ function main(args = parse_commandline())
 
     # select CDD methods based on the desired metric
     metric = args["metric"]
+    styles = [
+        "{tu01,mark=*}", # Li & Ma threshold
+        "{tu02,mark=diamond*}", # Menon PK-CCN
+        "{tu02,mark=diamond,semithick,densely dotted}", # Menon CK-CCN
+        "{tu02,mark=diamond,semithick}", # Menon CU-CCN
+        "{tu05,mark=pentagon,semithick}", # Mithal
+        "{tu04,mark=square,semithick}", # default
+        "{tu03,mark=triangle*}", # Li & Ma tree
+        "{tu04,mark=o}",
+        "{tu02,mark=diamond, semithick}",
+        "{tu03,mark=triangle,semithick}"
+    ]
     if metric ∈ ["f1", "lima"]
         df = df[[!occursin("accuracy", x) for x in df[!, :method]], :]
     elseif metric == "accuracy"
@@ -49,9 +61,12 @@ function main(args = parse_commandline())
         df = df[[x ∈ [
             "Li \\& Ma threshold (ours; PK-CCN)",
             "Menon et al. (2015; CU-CCN; accuracy)",
-            "Mithal et al. (2017; CU-CCN; G measure)"
+            "Mithal et al. (2017; CU-CCN; G measure)",
+            "default (accuracy)", # ≡ Yao
+            "Li \\& Ma tree (ours; PK-CCN)",
         ] for x in df[!, :method]], :]
         metric = "f1"
+        styles = styles[[1, 4, 5, 6, 7]]
     else
         throw(ArgumentError("metric=\"$metric\" is not valid"))
     end
@@ -112,7 +127,7 @@ function main(args = parse_commandline())
     # style it
     plot.style = join([
         plot.style,
-        "cycle list={{tu01,mark=*},{tu04,mark=diamond*},{tu02,mark=halfcircle,semithick,densely dotted},{tu03,mark=square,semithick},{tu05,mark=pentagon,semithick},{tu06,mark=oplus,semithick},{tu07,mark=triangle*},{tu04,mark=o},{tu02,mark=diamond, semithick},{tu03,mark=triangle,semithick}}",
+        "cycle list={$(join(styles, ','))}",
         "xticklabel style={font=\\small}",
         "yticklabel style={font=\\small}",
         "xlabel style={font=\\small}",
