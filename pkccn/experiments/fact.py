@@ -16,7 +16,7 @@ DATA_DIR = "data/"
 HEADER = ["concentration_cog", "concentration_core", "concentration_one_pixel", "concentration_two_pixel", "leakage1", "leakage2", "size", "width", "length", "skewness_long", "skewness_trans", "kurtosis_long", "kurtosis_trans", "num_islands", "num_pixel_in_shower", "photoncharge_shower_variance", "area", "log_size", "size_area", "area_size_cut_var"]
 
 
-def extract_weak_labels(data, theta2_cut=0.025):
+def _extract_weak_labels(data, theta2_cut=0.025):
     """Extract noisy On/Off region labels from a DataFrame."""
     X = data[HEADER].values
     theta_cut = np.sqrt(theta2_cut)
@@ -56,7 +56,7 @@ def read_fact(fake=False):
     dl3[HEADER] = transformer.transform(dl3[HEADER])
     if fake:
         dl3 = _replace_on_position(dl3)
-    return extract_weak_labels(dl3)
+    return _extract_weak_labels(dl3)
 
 
 def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
