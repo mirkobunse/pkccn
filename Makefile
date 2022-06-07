@@ -10,7 +10,14 @@ EXPERIMENTS = \
     results/imblearn_tree_natarajan_low.csv \
     results/imblearn_tree_natarajan_high.csv \
     results/imblearn_tree_natarajan_asymmetric.csv \
-    results/imblearn_tree_natarajan_inverse.csv
+    results/imblearn_tree_natarajan_inverse.csv \
+    results/fact.csv \
+    results/fact_tree.csv
+DATA = \
+    data/fact_dl2.hdf5 \
+    data/fact_dl3.hdf5
+FACT_DL2=https://factdata.app.tu-dortmund.de/dl2/FACT-Tools/v1.1.2/open_crab_sample_facttools_dl2.hdf5
+FACT_DL3=https://factdata.app.tu-dortmund.de/dl3/FACT-Tools/v1.1.2/open_crab_sample_dl3.hdf5
 
 # plot CD diagrams in Julia
 plots: results/cdd_f1.tex results/cdd_DRAFT.tex results/cdd_lima.tex results/cdd_accuracy.tex
@@ -53,6 +60,11 @@ results/imblearn_tree_natarajan_asymmetric.csv: venv/.EXPERIMENTS pkccn/experime
 results/imblearn_tree_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tree.py
 	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.3 0.1
 
+results/fact.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
+	venv/bin/python -m pkccn.experiments.fact $@
+results/fact_tree.csv: venv/.EXPERIMENTS pkccn/experiments/fact_tree.py $(DATA)
+	venv/bin/python -m pkccn.experiments.fact_tree $@
+
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 3 --is_test_run
@@ -72,10 +84,18 @@ results/inspect_objectives.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_obje
 results/inspect_objectives_test.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_objectives.py
 	venv/bin/python -m pkccn.experiments.inspect_objectives $@ 0.5 0.1 --is_test_run
 
+# data download
+data: $(DATA)
+data/fact_dl2.hdf5:
+	curl --fail --create-dirs --output $@ $(FACT_DL2)
+data/fact_dl3.hdf5:
+	curl --fail --create-dirs --output $@ $(FACT_DL3)
+
+
 # virtual environment
 venv/.EXPERIMENTS: venv/bin/pip setup.py
 	venv/bin/pip install .[experiments] && touch $@
 venv/bin/pip:
 	python -m venv venv
 
-.PHONY: plots experiments
+.PHONY: plots experiments data
