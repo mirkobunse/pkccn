@@ -11,7 +11,8 @@ EXPERIMENTS = \
     results/imblearn_tree_natarajan_high.csv \
     results/imblearn_tree_natarajan_asymmetric.csv \
     results/imblearn_tree_natarajan_inverse.csv \
-    results/fact.csv
+    results/fact.csv \
+    results/fact_fake.csv
 DATA = \
     data/fact_dl2.hdf5 \
     data/fact_dl3.hdf5
@@ -61,6 +62,8 @@ results/imblearn_tree_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments
 
 results/fact.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@
+results/fact_fake.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
+	venv/bin/python -m pkccn.experiments.fact $@ --fake_labels
 
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
