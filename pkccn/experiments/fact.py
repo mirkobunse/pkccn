@@ -66,7 +66,7 @@ def trial(trial_seed, methods, clf, X, y_hat, group):
     # cross_val_predict, fitting a separate threshold in each fold
     y_pred = { m: np.zeros_like(y_hat) for m in methods.keys() } # method name -> predictions
     thresholds = { m: [] for m in methods.keys() } # method name -> thresholds
-    for i_trn, i_tst in GroupKFold(len(np.unique(group.values))).split(X, y_hat, group):
+    for i_trn, i_tst in GroupKFold(len(np.unique(group))).split(X, y_hat, group):
         clf.fit(X[i_trn,:], y_hat[i_trn])
         y_trn = clf.oob_decision_function_[:,1]
         y_tst = clf.predict_proba(X[i_tst,:])[:,1]
