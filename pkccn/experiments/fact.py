@@ -7,60 +7,71 @@ from multiprocessing import Pool
 from pkccn import lima_score, Threshold
 from fact.io import read_data as fact_read_data
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import GroupKFold
-from sklearn.preprocessing import LabelEncoder, QuantileTransformer
+from sklearn.preprocessing import LabelEncoder
 from tqdm.auto import tqdm
 
-DATA_DIR = "data/"
-HEADER = ["concentration_cog", "concentration_core", "concentration_one_pixel", "concentration_two_pixel", "leakage1", "leakage2", "size", "width", "length", "skewness_long", "skewness_trans", "kurtosis_long", "kurtosis_trans", "num_islands", "num_pixel_in_shower", "photoncharge_shower_variance", "area", "log_size", "size_area", "area_size_cut_var"]
+FEATURES = [ # what to read from the FACT HDF5 files
+    "concentration_cog",
+    "concentration_core",
+    "concentration_one_pixel",
+    "concentration_two_pixel",
+    "leakage1",
+    "leakage2",
+    "size",
+    "width",
+    "length",
+    "skewness_long",
+    "skewness_trans",
+    "kurtosis_long",
+    "kurtosis_trans",
+    "num_islands",
+    "num_pixel_in_shower",
+    "photoncharge_shower_variance",
+    "area",
+    "log_size",
+    "size_area",
+    "area_size_cut_var"
+]
 
-
-def extract_weak_labels(data, theta2_cut=0.025):
+def _extract_weak_labels(df, theta2_cut=0.025):
     """Extract noisy On/Off region labels from a DataFrame."""
-    X = data[HEADER].values
+    X = df[FEATURES].values
     theta_cut = np.sqrt(theta2_cut)
-    is_on = (data.theta_deg < theta_cut).values
-    is_off = pd.concat([data[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
-
-    sample = np.logical_or(is_on, np.any(is_off, axis=1)) # subsample
-    day = pd.to_datetime(data['timestamp_y'], unit="s").dt.dayofyear
+    is_on = (df.theta_deg < theta_cut).values
+    is_off = pd.concat([df[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
+    is_labeled = np.logical_or(is_on, np.any(is_off, axis=1)) # only consider labeled instances
+    day = pd.to_datetime(df['timestamp_y'], unit="s").dt.dayofyear
     group = LabelEncoder().fit_transform(day.values.reshape(-1, 1))
-
-    X = X[sample]
-    y = is_on[sample] * 2 - 1
-    group = group[sample]
-    return X, y, group
+    X = X[is_labeled]
+    y_hat = is_on[is_labeled] * 2 - 1
+    group = group[is_labeled]
+    return X, y_hat, group
 
 def _replace_on_position(dl3, off_position=1):
-    """Replace the ON position with one of the OFF positions."""
+    """Replace the On region with one of the Off regions."""
     column = f"theta_deg_off_{off_position}"
     dl3["theta_deg"] = dl3[column]
     dl3[column] = np.inf # no event is considered in this region
     return dl3
 
-def read_fact(fake=False):
-    """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features"""
-    dl3 = [x for x in os.listdir(DATA_DIR) if x.endswith("_dl3.hdf5")].pop()
-    dl3 = fact_read_data(os.path.join(DATA_DIR, dl3), "events")
-    dl2 = [x for x in os.listdir(DATA_DIR) if x.endswith("_dl2.hdf5")].pop()
-    dl2 = fact_read_data(os.path.join(DATA_DIR, dl2), "events")
+def read_fact(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
+    """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features."""
+    dl3 = fact_read_data(dl3_path, "events")
+    dl2 = fact_read_data(dl2_path, "events")
     dl3 = dl3.rename({"event_num": "event"}, axis='columns')
     dl2 = dl2.rename({"event_num": "event"}, axis='columns')
     dl3 = dl3.merge(dl2, on=["event", "night", "run_id"], how="inner")
     dl3["area"] = dl3["width"] * dl3["length"] * np.pi
     dl3["log_size"] = np.log(dl3["size"])
-    dl3["size_area"] = dl3["size"] / (dl3["width"] * dl3["length"] * np.pi)
-    dl3["area_size_cut_var"] = (dl3["width"] * dl3["length"] * np.pi) / (np.log(dl3["size"]) ** 2)
-    transformer = QuantileTransformer(output_distribution="uniform").fit(dl3[HEADER])
-    dl3[HEADER] = transformer.transform(dl3[HEADER])
-    if fake:
+    dl3["size_area"] = dl3["size"] / dl3["area"]
+    dl3["area_size_cut_var"] = dl3["area"] / (dl3["log_size"] ** 2)
+    if fake_labels:
         dl3 = _replace_on_position(dl3)
-    return extract_weak_labels(dl3)
-
+    return _extract_weak_labels(dl3)
 
 def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
-    """A single trial of imblearn.main()"""
+    """A single trial of fact.main()"""
     np.random.seed(trial_seed)
 
     # cross_val_predict, fitting a separate threshold in each fold
@@ -89,7 +100,7 @@ def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
 def main(
         output_path,
         seed = 867,
-        n_repetitions = 5,
+        n_repetitions = 20,
         fake_labels = False,
         is_test_run = False,
     ):
@@ -116,11 +127,8 @@ def main(
             Threshold("default", metric="f1"),
     }
     clf = RandomForestClassifier(oob_score=True, max_depth=8)
-    print("Data Loading")
+    print("Loading the data...")
     X, y_hat, group = read_fact(fake_labels)
-    print("Data Loaded")
-
-
 
     # parallelize over repetitions
     results = []
@@ -152,8 +160,8 @@ if __name__ == '__main__':
     parser.add_argument('output_path', type=str, help='path of an output *.csv file')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
                         help='random number generator seed (default: 876)')
-    parser.add_argument('--n_repetitions', type=int, default=5, metavar='N',
-                        help='number of repetitions of the cross validation (default: 5)')
+    parser.add_argument('--n_repetitions', type=int, default=20, metavar='N',
+                        help='number of repetitions of the cross validation (default: 20)')
     parser.add_argument("--fake_labels", action="store_true")
     parser.add_argument("--is_test_run", action="store_true")
     args = parser.parse_args()
