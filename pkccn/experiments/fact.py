@@ -32,7 +32,14 @@ def extract_weak_labels(data, theta2_cut=0.025):
     group = group[sample]
     return X, y, group
 
-def read_fact():
+def _replace_on_position(dl3, off_position=1):
+    """Replace the ON position with one of the OFF positions."""
+    column = f"theta_deg_off_{off_position}"
+    dl3["theta_deg"] = dl3[column]
+    dl3[column] = np.inf # no event is considered in this region
+    return dl3
+
+def read_fact(fake=False):
     """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features"""
     dl3 = [x for x in os.listdir(DATA_DIR) if x.endswith("_dl3.hdf5")].pop()
     dl3 = fact_read_data(os.path.join(DATA_DIR, dl3), "events")
@@ -47,10 +54,12 @@ def read_fact():
     dl3["area_size_cut_var"] = (dl3["width"] * dl3["length"] * np.pi) / (np.log(dl3["size"]) ** 2)
     transformer = QuantileTransformer(output_distribution="uniform").fit(dl3[HEADER])
     dl3[HEADER] = transformer.transform(dl3[HEADER])
+    if fake:
+        dl3 = _replace_on_position(dl3)
     return extract_weak_labels(dl3)
 
 
-def trial(trial_seed, n_folds, methods, clf, X, y_hat, group):
+def trial(trial_seed, methods, clf, X, y_hat, group):
     """A single trial of imblearn.main()"""
     np.random.seed(trial_seed)
 
@@ -80,7 +89,6 @@ def trial(trial_seed, n_folds, methods, clf, X, y_hat, group):
 def main(
         output_path,
         seed = 867,
-        n_folds = 10,
         n_repetitions = 5,
         fake_labels = False,
         is_test_run = False,
@@ -91,6 +99,8 @@ def main(
     os.makedirs(os.path.dirname(output_path), exist_ok=True) # ensure that the directory exists
     np.random.seed(seed)
     p_minus = 1 / 6 # this value is equivalent to alpha = 1 / 5
+    if fake_labels:
+        p_minus = 1 / 5
 
     # configure the thresholding methods, the base classifier, and read the noisy data
     methods = {
@@ -106,13 +116,17 @@ def main(
             Threshold("default", metric="f1"),
     }
     clf = RandomForestClassifier(oob_score=True, max_depth=8)
-    X, y_hat, group = read_fact() # TODO
+    print("Data Loading")
+    X, y_hat, group = read_fact(fake_labels)
+    print("Data Loaded")
+
+
 
     # parallelize over repetitions
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     with Pool() as pool:
-        trial_Xyg = partial(trial, n_folds=n_folds, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group)
+        trial_Xyg = partial(trial, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group)
         trial_results = tqdm(
             pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
             total = n_repetitions,
@@ -138,8 +152,6 @@ if __name__ == '__main__':
     parser.add_argument('output_path', type=str, help='path of an output *.csv file')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
                         help='random number generator seed (default: 876)')
-    parser.add_argument('--n_folds', type=int, default=10, metavar='N',
-                        help='number of cross validation folds (default: 10)')
     parser.add_argument('--n_repetitions', type=int, default=5, metavar='N',
                         help='number of repetitions of the cross validation (default: 5)')
     parser.add_argument("--fake_labels", action="store_true")
@@ -148,7 +160,6 @@ if __name__ == '__main__':
     main(
         args.output_path,
         args.seed,
-        args.n_folds,
         args.n_repetitions,
         args.fake_labels,
         args.is_test_run,
