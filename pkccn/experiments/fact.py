@@ -5,24 +5,59 @@ import pandas as pd
 from functools import partial
 from multiprocessing import Pool
 from pkccn import lima_score, Threshold
+from fact.io import read_data as fact_read_data
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import GroupKFold
+from sklearn.preprocessing import LabelEncoder, QuantileTransformer
 from tqdm.auto import tqdm
 
-def read_fact(dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
-    """TODO"""
-    X = None
-    y_hat = None
-    return X, y_hat
+DATA_DIR = "data/"
+HEADER = ["concentration_cog", "concentration_core", "concentration_one_pixel", "concentration_two_pixel", "leakage1", "leakage2", "size", "width", "length", "skewness_long", "skewness_trans", "kurtosis_long", "kurtosis_trans", "num_islands", "num_pixel_in_shower", "photoncharge_shower_variance", "area", "log_size", "size_area", "area_size_cut_var"]
 
-def trial(trial_seed, n_folds, methods, clf, X, y_hat):
+
+def extract_weak_labels(data, theta2_cut=0.025):
+    """Extract noisy On/Off region labels from a DataFrame."""
+    X = data[HEADER].values
+    theta_cut = np.sqrt(theta2_cut)
+    is_on = (data.theta_deg < theta_cut).values
+    is_off = pd.concat([data[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
+
+    sample = np.logical_or(is_on, np.any(is_off, axis=1)) # subsample
+    day = pd.to_datetime(data['timestamp_y'], unit="s").dt.dayofyear
+    group = LabelEncoder().fit_transform(day.values.reshape(-1, 1))
+
+    X = X[sample]
+    y = is_on[sample] * 2 - 1
+    group = group[sample]
+    return X, y, group
+
+def read_fact():
+    """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features"""
+    dl3 = [x for x in os.listdir(DATA_DIR) if x.endswith("_dl3.hdf5")].pop()
+    dl3 = fact_read_data(os.path.join(DATA_DIR, dl3), "events")
+    dl2 = [x for x in os.listdir(DATA_DIR) if x.endswith("_dl2.hdf5")].pop()
+    dl2 = fact_read_data(os.path.join(DATA_DIR, dl2), "events")
+    dl3 = dl3.rename({"event_num": "event"}, axis='columns')
+    dl2 = dl2.rename({"event_num": "event"}, axis='columns')
+    dl3 = dl3.merge(dl2, on=["event", "night", "run_id"], how="inner")
+    dl3["area"] = dl3["width"] * dl3["length"] * np.pi
+    dl3["log_size"] = np.log(dl3["size"])
+    dl3["size_area"] = dl3["size"] / (dl3["width"] * dl3["length"] * np.pi)
+    dl3["area_size_cut_var"] = (dl3["width"] * dl3["length"] * np.pi) / (np.log(dl3["size"]) ** 2)
+    transformer = QuantileTransformer(output_distribution="uniform").fit(dl3[HEADER])
+    dl3[HEADER] = transformer.transform(dl3[HEADER])
+    return extract_weak_labels(dl3)
+
+
+def trial(trial_seed, n_folds, methods, clf, X, y_hat, group):
     """A single trial of imblearn.main()"""
     np.random.seed(trial_seed)
 
     # cross_val_predict, fitting a separate threshold in each fold
     y_pred = { m: np.zeros_like(y_hat) for m in methods.keys() } # method name -> predictions
     thresholds = { m: [] for m in methods.keys() } # method name -> thresholds
-    for i_trn, i_tst in StratifiedKFold(n_folds, shuffle=True).split(X, y_hat):
+    for i_trn, i_tst in GroupKFold(len(np.unique(group.values))).split(X, y_hat, group):
         clf.fit(X[i_trn,:], y_hat[i_trn])
         y_trn = clf.oob_decision_function_[:,1]
         y_tst = clf.predict_proba(X[i_tst,:])[:,1]
@@ -71,15 +106,15 @@ def main(
             Threshold("default", metric="f1"),
     }
     clf = RandomForestClassifier(oob_score=True, max_depth=8)
-    X, y_hat = read_fact() # TODO
+    X, y_hat, group = read_fact() # TODO
 
     # parallelize over repetitions
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     with Pool() as pool:
-        trial_Xy = partial(trial, n_folds=n_folds, methods=methods, clf=clf, X=X, y_hat=y_hat)
+        trial_Xyg = partial(trial, n_folds=n_folds, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group)
         trial_results = tqdm(
-            pool.imap(trial_Xy, trial_seeds), # each trial gets a different seed
+            pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
             total = n_repetitions,
             ncols = 80
         )
