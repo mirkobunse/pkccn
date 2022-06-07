@@ -59,7 +59,7 @@ def read_fact(fake=False):
     return extract_weak_labels(dl3)
 
 
-def trial(trial_seed, methods, clf, X, y_hat, group):
+def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
     """A single trial of imblearn.main()"""
     np.random.seed(trial_seed)
 
@@ -82,7 +82,7 @@ def trial(trial_seed, methods, clf, X, y_hat, group):
             "method": method_name,
             "threshold": np.mean(thresholds[method_name]),
             "trial_seed": trial_seed,
-            "lima": -1, # TODO
+            "lima": lima_score(y_hat, y_method, p_minus),
         })
     return trial_results
 
@@ -126,7 +126,7 @@ def main(
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     with Pool() as pool:
-        trial_Xyg = partial(trial, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group)
+        trial_Xyg = partial(trial, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group, p_minus=p_minus)
         trial_results = tqdm(
             pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
             total = n_repetitions,
