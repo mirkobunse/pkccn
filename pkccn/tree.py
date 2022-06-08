@@ -59,13 +59,14 @@ class LiMaTree(BaseEstimator, ClassifierMixin):
         return self.classes_[y_pred]
 
 _Tree = namedtuple("Tree", ["feature", "threshold", "left", "right", "y_pred"])
+_Split = namedtuple("Split", ["loss", "loss_l", "loss_r", "feature", "threshold"])
 def _construct_tree(X, y_hat, rng, alpha, max_depth=None, loss=0.):
     """Recursively construct a tree from noisy labels y_hat"""
-    y_pred = 1 if np.sum(y_hat==1) / len(y_hat) > .5 else 0
-    if max_depth == 0 or len(X) == 1: # leaf node with fraction of positives?
+    y_pred = np.sum(y_hat==1) / len(y_hat)
+    if max_depth == 0 or len(np.unique(y_hat)) == 1: # leaf node with fraction of positives?
         return _Tree(None, None, None, None, y_pred)
     scaler = MinMaxScaler()
-    best_split = (loss, None, None) # (loss, feature, threshold) with loss of parent
+    best_split = _Split(loss, None, None, None, None) # compare with loss of parent
     for feature in rng.choice(X.shape[1], int(np.sqrt(X.shape[1]))):
         x = scaler.fit_transform(X[:,feature].reshape(-1,1)).flatten() # map to [0,1]
         t, loss, is_success = _minimize(
@@ -74,23 +75,26 @@ def _construct_tree(X, y_hat, rng, alpha, max_depth=None, loss=0.):
             rng,
             args =(y_hat, x, alpha)
         )
-        if is_success and loss < best_split[0]:
-            best_split = (loss, feature, scaler.inverse_transform(np.array([[t]]))[0])
-    if best_split[1] is None: # do all splits have larger loss than their parent?
+        if is_success and loss < best_split.loss:
+            loss_l, loss_r = _split_objective(t, y_hat, x, alpha, reduce=False)
+            threshold = scaler.inverse_transform(np.array([[t]])).flatten()[0]
+            best_split = _Split(loss, loss_l, loss_r, feature, threshold)
+    if best_split.feature is None: # do all splits have larger loss than their parent?
         return _Tree(None, None, None, None, y_pred)
-    i_left = X[:,best_split[1]] <= best_split[2] # X[:, feature] <= threshold
+    i_left = X[:,best_split.feature] <= best_split.threshold
     i_right = np.logical_not(i_left)
     if max_depth is not None:
         max_depth -= 1
+    # print(f"loss_l={-np.sqrt(-2*best_split.loss_l):.5f}, loss_r={-np.sqrt(-2*best_split.loss_r):.5f}, p={np.mean(X[:,best_split.feature] > best_split.threshold)}")
     return _Tree(
-        best_split[1], # feature
-        best_split[2], # threshold
-        _construct_tree(X[i_left,:], y_hat[i_left], rng, alpha, max_depth, best_split[0]),
-        _construct_tree(X[i_right,:], y_hat[i_right], rng, alpha, max_depth, best_split[0]),
+        best_split.feature,
+        best_split.threshold,
+        _construct_tree(X[i_left,:], y_hat[i_left], rng, alpha, max_depth, best_split.loss_l),
+        _construct_tree(X[i_right,:], y_hat[i_right], rng, alpha, max_depth, best_split.loss_r),
         None, # y_pred
     )
 
-def _split_objective(t, y_hat, x, alpha):
+def _split_objective(t, y_hat, x, alpha, reduce=True):
     """Objective function for lima_threshold."""
     y_left = y_hat[x <= t] # y_left is in [-1, 1]
     y_right = y_hat[x > t]
@@ -107,14 +111,14 @@ def _split_objective(t, y_hat, x, alpha):
             f = N_plus * np.log((1+alpha)/alpha * N_plus/N) + N_minus * np.log((1+alpha) * N_minus/N)
         if not np.isfinite(f):
             continue # advance to the next side
-        f_side[i_side] = -np.maximum(f, 0.)
-    return np.min(f_side) # maximize the function value
+        f_side[i_side] = -np.maximum(f, 0.) # maximize the function value
+    return np.min(f_side) if reduce else f_side
 
 def _predict_tree(X, tree):
     """Recursively predict X"""
     if tree.feature is None:
         return tree.y_pred * np.ones(len(X))
-    y_pred = np.empty(len(X), dtype=int)
+    y_pred = np.empty(len(X), dtype=float)
     i_left = X[:,tree.feature] <= tree.threshold
     i_right = np.logical_not(i_left)
     y_pred[i_left] = _predict_tree(X[i_left,:], tree.left)
