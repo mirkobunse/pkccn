@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import partial
 from imblearn.datasets import fetch_datasets
 from multiprocessing import Pool
-from pkccn import lima_score, Threshold
+from pkccn import g_score, lima_score, Threshold
 from pkccn.data import inject_ccn
 from pkccn.experiments.imblearn import datasets
 from pkccn.tree import LiMaRandomForest
@@ -70,6 +70,7 @@ def main(
                 "trial_seed": trial_seed,
                 "accuracy": accuracy_score(y, y_pred),
                 "f1": f1_score(y, y_pred),
+                "g": g_score(y, y_pred),
                 "lima": lima_score(y_ccn, y_pred, p_minus), # noisy LiMa
             })
 
@@ -82,10 +83,12 @@ def main(
         accuracy_std = ("accuracy", "std"),
         f1 = ("f1", "mean"),
         f1_std = ("f1", "std"),
+        g = ("g", "mean"),
+        g_std = ("g", "std"),
         lima = ("lima", "mean"),
         lima_std = ("lima", "std"),
     )
-    print(df.groupby("method", sort=False).agg(f1 = ("f1", "mean")))
+    print(df.groupby("method", sort=False).agg(f1=("f1", "mean"), g=("g", "mean"), lima=("lima", "mean")))
     df['p_minus'] = p_minus
     df['p_plus'] = p_plus
     df.to_csv(output_path)

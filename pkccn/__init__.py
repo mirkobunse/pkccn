@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score, recall_score
 
 class ThresholdedClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, base_classifier, method, fit_classifier=True, prediction_method="training", method_args={}):
@@ -68,6 +68,10 @@ def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=Non
     elif p_minus is not None or p_plus is not None:
         raise ValueError(f"if y_pred is None, set both p_minus and p_plus or none of them")
     return -_f1_objective(0, y_true, y_threshold, pi, alpha, beta)
+
+def g_score(y_true, y_threshold):
+    """The G-measure is the geometric mean of precision and recall"""
+    return np.sqrt(precision_score(y_true, y_threshold) * recall_score(y_true, y_threshold))
 
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, return_score=False, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
