@@ -32,7 +32,7 @@ def main(
 
     # configure the Li&Ma classifier
     method_name = "Li \& Ma tree (ours; PK-CCN)"
-    clf = LiMaRandomForest(p_minus, max_depth=8, n_jobs=-1)
+    clf = LiMaRandomForest(p_minus, max_depth=6, n_jobs=-1)
     if is_test_run:
         clf.max_depth = 4
         clf.n_estimators = 32
