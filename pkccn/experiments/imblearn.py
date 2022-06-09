@@ -91,7 +91,7 @@ def main(
         "default (F1 score)":
             Threshold("default", metric="f1"),
     }
-    clf = RandomForestClassifier(oob_score=True, max_depth=8)
+    clf = RandomForestClassifier(oob_score=True, max_depth=6)
 
     # iterate over all data sets
     results = []
