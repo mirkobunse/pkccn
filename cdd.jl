@@ -27,6 +27,36 @@ function parse_commandline()
     return parse_args(s)
 end
 
+abbreviate_method_name(x) = # abbreviate the name for a table of average scores
+    if x == "Li \\& Ma threshold (ours; PK-CCN)"
+        "Li\\&Ma thresh."
+    elseif x == "Li \\& Ma tree (ours; PK-CCN)"
+        "Li\\&Ma tree"
+    elseif x == "Menon et al. (2015; PK-CCN; accuracy)"
+        "Menon PK acc."
+    elseif x == "Menon et al. (2015; PK-CCN; F1 score)"
+        "Menon PK F1"
+    elseif x == "Menon et al. (2015; CK-CCN; accuracy)"
+        "Menon CK acc."
+    elseif x == "Menon et al. (2015; CK-CCN; F1 score)"
+        "Menon CK F1"
+    elseif x == "Menon et al. (2015; CU-CCN; accuracy)"
+        "Menon CU acc."
+    elseif x == "Menon et al. (2015; CU-CCN; F1 score)"
+        "Menon CU F1"
+    elseif x == "Mithal et al. (2017; CU-CCN; G measure)"
+        "Mithal CU"
+    elseif x == "Yao et al. (2020; CU-CCN; accuracy)"
+        "Yao CU"
+    elseif x == "default (accuracy)"
+        "default acc."
+    elseif x == "default (F1 score)"
+        "default F1"
+    else
+        @warn "No abbreviated for the method name \"$(x)\""
+        x # return x without abbreviating
+    end
+
 """Main function."""
 function main(args = parse_commandline())
     @info "Generating plots from $(length(args["input"])) input files" args["tex"] args["pdf"] args["input"] args["alpha"]
@@ -71,37 +101,26 @@ function main(args = parse_commandline())
         throw(ArgumentError("metric=\"$metric\" is not valid"))
     end
 
-    # # print a table of average scores;
-    # # TODO generate a table that focuses the args["metric"]
-    # df = df[[x ∈ [
-    #     "Li \\& Ma threshold (ours; PK-CCN)",
-    #     "Menon et al. (2015; PK-CCN; F1 score)",
-    #     "Menon et al. (2015; CU-CCN; F1 score)",
-    #     "Menon et al. (2015; CU-CCN; accuracy)",
-    #     "Mithal et al. (2017; CU-CCN; G measure)"
-    # ] for x ∈ df[!,:method]],:]
-    # df[df[!,:method].=="Li \\& Ma threshold (ours; PK-CCN)", :method] .= "Li\\&Ma PK"
-    # df[df[!,:method].=="Menon et al. (2015; PK-CCN; F1 score)", :method] .= "Menon PK F1"
-    # df[df[!,:method].=="Menon et al. (2015; CU-CCN; F1 score)", :method] .= "Menon CU F1"
-    # df[df[!,:method].=="Menon et al. (2015; CU-CCN; accuracy)", :method] .= "Menon CU Acc"
-    # df[df[!,:method].=="Mithal et al. (2017; CU-CCN; G measure)", :method] .= "Mithal CU"
-    # @info "Tab. 1" agg = unstack( # unstack from long to wide format
-    #     vcat( # concatenate noise-wise average and overall average
-    #         combine(
-    #             groupby(df, [:method, :p_minus, :p_plus]),
-    #             Symbol(args["metric"]) => DataFrames.mean => :value
-    #         ),
-    #         combine(
-    #             groupby(df, :method),
-    #             Symbol(args["metric"]) => DataFrames.mean => :value,
-    #             :p_minus => (x -> -1) => :p_minus, # dummy values
-    #             :p_plus => (x -> -1) => :p_plus
-    #         )
-    #     ),
-    #     [:p_minus, :p_plus], # rows
-    #     :method, # columns
-    #     :value
-    # )
+    # print a table of average scores
+    df[!,:abbreviation] = abbreviate_method_name.(df[!,:method])
+    average_scores = unstack( # unstack from long to wide format
+        vcat( # concatenate noise-wise average and overall average
+            combine(
+                groupby(df, [:abbreviation, :p_minus, :p_plus]),
+                Symbol(args["metric"]) => DataFrames.mean => :value
+            ),
+            combine(
+                groupby(df, :abbreviation),
+                Symbol(args["metric"]) => DataFrames.mean => :value,
+                :p_minus => (x -> -1) => :p_minus, # dummy values
+                :p_plus => (x -> -1) => :p_plus
+            )
+        ),
+        [:p_minus, :p_plus], # rows
+        :abbreviation, # columns
+        :value
+    )
+    @info "Tab. 1 ($(args["metric"]))" average_scores
 
     # generate a sequence of CD diagrams
     sequence = Pair{String, Vector{Pair{String, Vector}}}[]
