@@ -96,13 +96,13 @@ function main(args = parse_commandline())
     # select CDD methods based on the desired metric
     metric = args["metric"]
     styles = [
+        "{tu03,mark=triangle*}", # Li & Ma tree
         "{tu01,mark=*}", # Li & Ma threshold
         "{tu02,mark=diamond*}", # Menon PK-CCN
         "{tu02,mark=diamond,semithick,densely dotted}", # Menon CK-CCN
         "{tu02,mark=diamond,semithick}", # Menon CU-CCN
         "{tu05,mark=pentagon,semithick}", # Mithal
         "{tu04,mark=square,semithick}", # default
-        "{tu03,mark=triangle*}", # Li & Ma tree
         "{tu04,mark=o}",
         "{tu02,mark=diamond, semithick}",
         "{tu03,mark=triangle,semithick}"
