@@ -1,4 +1,4 @@
-EXPERIMENTS = \
+IMBLEARN_EXPERIMENTS = \
     results/imblearn_low.csv \
     results/imblearn_high.csv \
     results/imblearn_natarajan_low.csv \
@@ -10,7 +10,8 @@ EXPERIMENTS = \
     results/imblearn_tree_natarajan_low.csv \
     results/imblearn_tree_natarajan_high.csv \
     results/imblearn_tree_natarajan_asymmetric.csv \
-    results/imblearn_tree_natarajan_inverse.csv \
+    results/imblearn_tree_natarajan_inverse.csv
+FACT_EXPERIMENTS = \
     results/fact.csv \
     results/fact_fake.csv
 DATA = \
@@ -21,19 +22,19 @@ FACT_DL3=https://factdata.app.tu-dortmund.de/dl3/FACT-Tools/v1.1.2/open_crab_sam
 
 # plot CD diagrams in Julia
 plots: results/cdd_f1.tex results/cdd_DRAFT.tex results/cdd_lima.tex results/cdd_accuracy.tex
-results/cdd_f1.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
-	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric f1 $(EXPERIMENTS)
-results/cdd_DRAFT.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
-	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric DRAFT --alpha 0.1 $(EXPERIMENTS)
-results/cdd_lima.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
-	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric lima $(EXPERIMENTS)
-results/cdd_accuracy.tex: cdd.jl Manifest.toml $(EXPERIMENTS)
-	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric accuracy $(EXPERIMENTS)
+results/cdd_f1.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric f1 $(IMBLEARN_EXPERIMENTS)
+results/cdd_DRAFT.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric DRAFT --alpha 0.1 $(IMBLEARN_EXPERIMENTS)
+results/cdd_lima.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric lima $(IMBLEARN_EXPERIMENTS)
+results/cdd_accuracy.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --metric accuracy $(IMBLEARN_EXPERIMENTS)
 Manifest.toml: Project.toml
 	julia --project=. --eval "using Pkg; Pkg.instantiate()"
 
 # one experiment per noise configuration
-experiments: $(EXPERIMENTS)
+experiments: $(IMBLEARN_EXPERIMENTS) $(FACT_EXPERIMENTS)
 results/imblearn_low.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1
 results/imblearn_high.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
