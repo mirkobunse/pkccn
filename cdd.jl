@@ -1,4 +1,4 @@
-using ArgParse, CriticalDifferenceDiagrams, CSV, DataFrames, PGFPlots
+using ArgParse, CriticalDifferenceDiagrams, CSV, DataFrames, Printf, PGFPlots
 
 # prevent underscores from breaking LaTeX
 detokenize(x::Any) = replace(string(x), "_" => "\\_")
@@ -8,9 +8,13 @@ function parse_commandline()
     s = ArgParseSettings()
     @add_arg_table s begin
         "--tex", "-t"
-            help = "the path of an output TEX file"
+            help = "the path of an output TEX file for a CD diagram"
         "--pdf", "-p"
-            help = "the path of an output PDF file"
+            help = "the path of an output PDF file for a CD diagram"
+        "--average-table"
+            help = "the path of an output TEX file for an average score table"
+        "--dataset-table"
+            help = "the path of an output TEX file for a dataset-wise score table"
         "--metric", "-m"
             help = "∈ {f1 (default), lima, accuracy}, optionally with prefix \"all_\""
             range_tester = x -> x ∈ ["f1", "lima", "accuracy", "all_f1", "all_lima", "all_accuracy", "DRAFT"]
@@ -45,9 +49,9 @@ abbreviate_method_name(x) = # abbreviate the name for a table of average scores
     elseif x == "Menon et al. (2015; CU-CCN; F1 score)"
         "Menon CU F1"
     elseif x == "Mithal et al. (2017; CU-CCN; G measure)"
-        "Mithal CU"
+        "Mithal CU G"
     elseif x == "Yao et al. (2020; CU-CCN; accuracy)"
-        "Yao CU"
+        "Yao CU acc."
     elseif x == "default (accuracy)"
         "default acc."
     elseif x == "default (F1 score)"
@@ -56,6 +60,29 @@ abbreviate_method_name(x) = # abbreviate the name for a table of average scores
         @warn "No abbreviated for the method name \"$(x)\""
         x # return x without abbreviating
     end
+
+format_score(x) = try @sprintf("%.3f", x)[2:end] catch; "" end
+
+function save_table(output_path, df)
+    @info "Exporting a LaTeX table to $(output_path)"
+    rename!(df, "p_minus" => "\$p_-\$")
+    rename!(df, "p_plus" => "\$p_+\$")
+    if :dataset ∈ propertynames(df)
+        df[!,:dataset] = [replace(x, "_"=>"-") for x ∈ df[!,:dataset]]
+    end
+    open(output_path, "w") do io
+        println(io, "\\begin{tabular}{$(repeat("c", size(df, 2)))}")
+        println(io, "  \\toprule")
+        println(io, "    ", join(names(df), " & "), " \\\\") # header
+        println(io, "  \\midrule")
+        for r in eachrow(df)
+            println(io, "    ", join(r, " & "), " \\\\")
+        end
+        println(io, "  \\bottomrule")
+        println(io, "\\end{tabular}")
+    end
+    return nothing
+end
 
 """Main function."""
 function main(args = parse_commandline())
@@ -101,26 +128,66 @@ function main(args = parse_commandline())
         throw(ArgumentError("metric=\"$metric\" is not valid"))
     end
 
-    # print a table of average scores
+    # print a table of average scores (Tab. 1)
     df[!,:abbreviation] = abbreviate_method_name.(df[!,:method])
-    average_scores = unstack( # unstack from long to wide format
-        vcat( # concatenate noise-wise average and overall average
+    average_scores = transform(
+        groupby(vcat( # concatenate noise-wise average and overall average
             combine(
                 groupby(df, [:abbreviation, :p_minus, :p_plus]),
-                Symbol(args["metric"]) => DataFrames.mean => :value
+                Symbol(args["metric"]) => DataFrames.mean => :mean
             ),
             combine(
                 groupby(df, :abbreviation),
-                Symbol(args["metric"]) => DataFrames.mean => :value,
+                Symbol(args["metric"]) => DataFrames.mean => :mean,
                 :p_minus => (x -> -1) => :p_minus, # dummy values
                 :p_plus => (x -> -1) => :p_plus
             )
-        ),
+        ), [:p_minus, :p_plus]),
+        :mean => (x -> x .== maximum(x)) => :is_best
+    )
+    average_scores[!,:mean_fmt] = format_score.(average_scores[!,:mean])
+    average_scores[!,:value] = .*(
+        [x ? "\$\\mathbf{" : "\${" for x ∈ average_scores[!,:is_best]],
+        average_scores[!,:mean_fmt],
+        "}\$"
+    )
+    average_scores = unstack( # unstack from long to wide format
+        average_scores,
         [:p_minus, :p_plus], # rows
         :abbreviation, # columns
         :value
     )
-    @info "Tab. 1 ($(args["metric"]))" average_scores
+    if args["average-table"] != nothing
+        save_table(args["average-table"], average_scores)
+    end
+
+    # print a second table without aggregating over data sets (appendix)
+    dataset_scores = transform(
+        groupby(combine(
+            groupby(df, [:abbreviation, :dataset, :p_minus, :p_plus]),
+            Symbol(args["metric"]) => DataFrames.mean => :mean,
+            Symbol(args["metric"]*"_std") => DataFrames.mean => :std
+        ), [:dataset, :p_minus, :p_plus]),
+        :mean => (x -> x .== maximum(x)) => :is_best
+    )
+    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean])
+    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std])
+    dataset_scores[!,:value] = .*(
+        [x ? "\$\\mathbf{" : "\${" for x ∈ dataset_scores[!,:is_best]],
+        dataset_scores[!,:mean_fmt],
+        "\\pm",
+        dataset_scores[!,:std_fmt],
+        "}\$"
+    )
+    dataset_scores = sort(unstack(
+        dataset_scores,
+        [:dataset, :p_minus, :p_plus], # rows
+        :abbreviation, # columns
+        :value
+    ), :dataset)
+    if args["dataset-table"] != nothing
+        save_table(args["dataset-table"], dataset_scores)
+    end
 
     # generate a sequence of CD diagrams
     sequence = Pair{String, Vector{Pair{String, Vector}}}[]
