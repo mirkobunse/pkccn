@@ -2,21 +2,29 @@
 \usepackage[margin=.5in]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{graphicx} % provides \rotatebox
+\usepackage{tikz}
 \usepackage{amsmath}
 
 \begin{document}
 
 \begin{table}
   \centering
-  \caption{Average F1 score over all data sets}
+  \scshape
+  \caption{Average F1 scores (higher is better) over all data sets.}
   \scriptsize
+  \addtolength{\tabcolsep}{-4pt}
   \input{results/avg_f1}
 \end{table}
 
 \begin{table}
   \centering
-  \caption{Average F1 score per data set}
+  \scshape
+  \caption{Average F1 scores (higher is better) per data set.}
   \scriptsize
+  \addtolength{\tabcolsep}{-4pt}
   \input{results/datasets_f1}
 \end{table}
 

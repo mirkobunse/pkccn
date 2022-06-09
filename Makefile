@@ -1,16 +1,16 @@
 IMBLEARN_EXPERIMENTS = \
-    results/imblearn_low.csv \
-    results/imblearn_high.csv \
-    results/imblearn_natarajan_low.csv \
-    results/imblearn_natarajan_high.csv \
-    results/imblearn_natarajan_asymmetric.csv \
-    results/imblearn_natarajan_inverse.csv \
     results/imblearn_tree_low.csv \
     results/imblearn_tree_high.csv \
     results/imblearn_tree_natarajan_low.csv \
     results/imblearn_tree_natarajan_high.csv \
     results/imblearn_tree_natarajan_asymmetric.csv \
-    results/imblearn_tree_natarajan_inverse.csv
+    results/imblearn_tree_natarajan_inverse.csv \
+    results/imblearn_low.csv \
+    results/imblearn_high.csv \
+    results/imblearn_natarajan_low.csv \
+    results/imblearn_natarajan_high.csv \
+    results/imblearn_natarajan_asymmetric.csv \
+    results/imblearn_natarajan_inverse.csv
 FACT_EXPERIMENTS = \
     results/fact.csv \
     results/fact_fake.csv

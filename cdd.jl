@@ -33,47 +33,46 @@ end
 
 abbreviate_method_name(x) = # abbreviate the name for a table of average scores
     if x == "Li \\& Ma threshold (ours; PK-CCN)"
-        "Li\\&Ma thresh."
+        "Li\\&Ma\\\\thresh."
     elseif x == "Li \\& Ma tree (ours; PK-CCN)"
-        "Li\\&Ma tree"
+        "Li\\&Ma\\\\tree"
     elseif x == "Menon et al. (2015; PK-CCN; accuracy)"
-        "Menon PK acc."
+        "Menon\\\\PK/acc."
     elseif x == "Menon et al. (2015; PK-CCN; F1 score)"
-        "Menon PK F1"
+        "Menon\\\\PK/F1"
     elseif x == "Menon et al. (2015; CK-CCN; accuracy)"
-        "Menon CK acc."
+        "Menon\\\\CK/acc."
     elseif x == "Menon et al. (2015; CK-CCN; F1 score)"
-        "Menon CK F1"
+        "Menon\\\\CK/F1"
     elseif x == "Menon et al. (2015; CU-CCN; accuracy)"
-        "Menon CU acc."
+        "Menon\\\\CU/acc."
     elseif x == "Menon et al. (2015; CU-CCN; F1 score)"
-        "Menon CU F1"
+        "Menon\\\\CU/F1"
     elseif x == "Mithal et al. (2017; CU-CCN; G measure)"
-        "Mithal CU G"
+        "Mithal\\\\CU/G"
     elseif x == "Yao et al. (2020; CU-CCN; accuracy)"
-        "Yao CU acc."
+        "Yao\\\\CU/acc."
     elseif x == "default (accuracy)"
-        "default acc."
+        "default\\\\acc."
     elseif x == "default (F1 score)"
-        "default F1"
+        "default\\\\F1"
     else
         @warn "No abbreviated for the method name \"$(x)\""
         x # return x without abbreviating
     end
 
-format_score(x) = try @sprintf("%.3f", x)[2:end] catch; "" end
+format_score(x; i=1) = try @sprintf("%.3f", x)[i:end] catch; "" end
 
 function save_table(output_path, df)
     @info "Exporting a LaTeX table to $(output_path)"
-    rename!(df, "p_minus" => "\$p_-\$")
-    rename!(df, "p_plus" => "\$p_+\$")
-    if :dataset ∈ propertynames(df)
-        df[!,:dataset] = [replace(x, "_"=>"-") for x ∈ df[!,:dataset]]
-    end
     open(output_path, "w") do io
-        println(io, "\\begin{tabular}{$(repeat("c", size(df, 2)))}")
+        println(io, "\\begin{tabular}{l$(repeat("c", size(df, 2)-1))}")
         println(io, "  \\toprule")
-        println(io, "    ", join(names(df), " & "), " \\\\") # header
+        println(io, "    ", join(.*(
+            "\\makecell{",
+            names(df),
+            "}"
+        ), " & "), " \\\\") # header
         println(io, "  \\midrule")
         for r in eachrow(df)
             println(io, "    ", join(r, " & "), " \\\\")
@@ -150,13 +149,21 @@ function main(args = parse_commandline())
         [x ? "\$\\mathbf{" : "\${" for x ∈ average_scores[!,:is_best]],
         average_scores[!,:mean_fmt],
         "}\$"
+    ) # element-wise concatenation of strings
+    average_scores[!,Symbol("noise configuration")] = .*(
+        "\$p_-=",
+        string.(average_scores[!,:p_minus]),
+        ", \\, p_+=",
+        string.(average_scores[!,:p_plus]),
+        "\$",
     )
     average_scores = unstack( # unstack from long to wide format
         average_scores,
-        [:p_minus, :p_plus], # rows
+        Symbol("noise configuration"), # rows
         :abbreviation, # columns
         :value
     )
+    average_scores[end,Symbol("noise configuration")] = "overall average"
     if args["average-table"] != nothing
         save_table(args["average-table"], average_scores)
     end
@@ -170,8 +177,8 @@ function main(args = parse_commandline())
         ), [:dataset, :p_minus, :p_plus]),
         :mean => (x -> x .== maximum(x)) => :is_best
     )
-    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean])
-    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std])
+    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean]; i=2)
+    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std]; i=2)
     dataset_scores[!,:value] = .*(
         [x ? "\$\\mathbf{" : "\${" for x ∈ dataset_scores[!,:is_best]],
         dataset_scores[!,:mean_fmt],
@@ -185,6 +192,20 @@ function main(args = parse_commandline())
         :abbreviation, # columns
         :value
     ), :dataset)
+    dataset_scores[!,:dataset] = convert.(String, dataset_scores[!,:dataset]) # variable-width Strings
+    last_dataset = ""
+    for r in eachrow(dataset_scores)
+        dataset = replace(r[:dataset], "_"=>"-")
+        if dataset != last_dataset
+            r[:dataset] = "\\multirow{6}{*}{\\rotatebox[origin=c]{90}{\\tiny $(dataset)}}"
+            last_dataset = dataset
+        else
+            r[:dataset] = ""
+        end
+    end
+    rename!(dataset_scores, "p_minus" => "\$p_-\$")
+    rename!(dataset_scores, "p_plus" => "\$p_+\$")
+    rename!(dataset_scores, "dataset" => "")
     if args["dataset-table"] != nothing
         save_table(args["dataset-table"], dataset_scores)
     end
