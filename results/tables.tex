@@ -13,19 +13,55 @@
 \begin{table}
   \centering
   \scshape
-  \caption{Average F1 scores (higher is better) over all data sets.}
+  \caption{Average $F_1$ scores (higher is better) over all data sets.}
   \scriptsize
-  \addtolength{\tabcolsep}{-4pt}
+  \addtolength{\tabcolsep}{-3pt}
   \input{results/avg_f1}
 \end{table}
 
 \begin{table}
   \centering
   \scshape
-  \caption{Average F1 scores (higher is better) per data set.}
+  \caption{Average $f_\alpha$ scores (higher is better) over all data sets.}
   \scriptsize
-  \addtolength{\tabcolsep}{-4pt}
+  \addtolength{\tabcolsep}{-3pt}
+  \input{results/avg_lima}
+\end{table}
+
+\begin{table}
+  \centering
+  \scshape
+  \caption{Average accuracy (higher is better) over all data sets.}
+  \scriptsize
+  \addtolength{\tabcolsep}{-3pt}
+  \input{results/avg_accuracy}
+\end{table}
+
+\begin{table}
+  \centering
+  \scshape
+  \caption{Average $F_1$ scores (higher is better) per data set.}
+  \scriptsize
+  \addtolength{\tabcolsep}{-5pt}
   \input{results/datasets_f1}
+\end{table}
+
+\begin{table}
+  \centering
+  \scshape
+  \caption{Average $f_\alpha$ scores (higher is better) per data set.}
+  \scriptsize
+  \addtolength{\tabcolsep}{-5pt}
+  \input{results/datasets_lima}
+\end{table}
+
+\begin{table}
+  \centering
+  \scshape
+  \caption{Average accuracy (higher is better) per data set.}
+  \scriptsize
+  \addtolength{\tabcolsep}{-5pt}
+  \input{results/datasets_accuracy}
 \end{table}
 
 \end{document}

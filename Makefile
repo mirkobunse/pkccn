@@ -21,8 +21,8 @@ FACT_DL2=https://factdata.app.tu-dortmund.de/dl2/FACT-Tools/v1.1.2/open_crab_sam
 FACT_DL3=https://factdata.app.tu-dortmund.de/dl3/FACT-Tools/v1.1.2/open_crab_sample_dl3.hdf5
 
 # plot CD diagrams in Julia
-plots: results/cdd_f1.tex results/cdd_DRAFT.tex results/cdd_lima.tex results/cdd_accuracy.tex results/tables.pdf
-results/tables.pdf: results/tables.tex results/cdd_f1.tex
+plots: results/cdd_f1.tex results/cdd_lima.tex results/cdd_accuracy.tex results/tables.pdf
+results/tables.pdf: results/tables.tex results/cdd_f1.tex results/cdd_lima.tex results/cdd_accuracy.tex
 	lualatex -interaction=nonstopmode -halt-on-error -output-directory $(dir $@) $<
 results/cdd_f1.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --average-table $(patsubst results/cdd_%,results/avg_%,$@) --dataset-table $(patsubst results/cdd_%,results/datasets_%,$@) --metric f1 $(IMBLEARN_EXPERIMENTS)

@@ -177,8 +177,8 @@ function main(args = parse_commandline())
         ), [:dataset, :p_minus, :p_plus]),
         :mean => (x -> x .== maximum(x)) => :is_best
     )
-    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean]; i=2)
-    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std]; i=2)
+    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean]; i=1+(args["metric"]!="lima"))
+    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std]; i=1+(args["metric"]!="lima"))
     dataset_scores[!,:value] = .*(
         [x ? "\$\\mathbf{" : "\${" for x ∈ dataset_scores[!,:is_best]],
         dataset_scores[!,:mean_fmt],
