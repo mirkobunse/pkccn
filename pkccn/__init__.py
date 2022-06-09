@@ -71,7 +71,7 @@ def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=Non
 
 def g_score(y_true, y_threshold):
     """The G-measure is the geometric mean of precision and recall"""
-    return np.sqrt(precision_score(y_true, y_threshold) * recall_score(y_true, y_threshold))
+    return np.sqrt(precision_score(y_true, y_threshold, zero_division=0) * recall_score(y_true, y_threshold))
 
 def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None, return_score=False, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using our proposal.
