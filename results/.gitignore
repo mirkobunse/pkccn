@@ -3,5 +3,4 @@
 *.log
 *.pdf
 *.tex
-!*_main.tex
 !tables.tex
