@@ -1,0 +1,118 @@
+\begin{tikzpicture}[]
+\begin{axis}[
+  title style={yshift=2\baselineskip}, y dir=reverse, ytick={1,2,3,4,5,6}, yticklabels={{$p_- = 0.5, \, p_+ = 0.1\hphantom{0}$},{$p_- = 0.5, \, p_+ = 0.25$},{$p_- = 0.2, \, p_+ = 0.2\hphantom{0}$},{$p_- = 0.4, \, p_+ = 0.4\hphantom{0}$},{$p_- = 0.1, \, p_+ = 0.3\hphantom{0}$},{$p_- = 0.3, \, p_+ = 0.1\hphantom{0}$}}, xlabel={avg. rank}, xlabel style={at={([yshift=-1pt]1,1)}, anchor=south west}, grid=both, axis line style={draw=none}, tick style={draw=none}, xticklabel pos=upper, xmin=.5, xmax=7.5, ymin=.66, ymax=6.66, clip=false, legend style={draw=none,fill=none,at={(1.1,.5)},anchor=west,row sep=.25em}, x dir=reverse, cycle list={{tu03,mark=triangle*},{tu01,mark=*},{tu02,mark=diamond*},{tu02,mark=diamond,semithick,densely dotted},{tu02,mark=diamond,semithick},{tu05,mark=pentagon,semithick},{tu04,mark=square,semithick},{tu04,mark=o},{tu02,mark=diamond, semithick},{tu03,mark=triangle,semithick}}, xticklabel style={font=\small}, yticklabel style={font=\small}, xlabel style={font=\small}, legend cell align={left}, width=\axisdefaultwidth, height=0.9*\axisdefaultheight
+]
+
+\addplot+[
+  only marks
+] coordinates {
+  (3.7037037037037037, 1.0)
+  (4.074074074074074, 2.0)
+  (4.148148148148148, 3.0)
+  (4.481481481481482, 4.0)
+  (3.8518518518518516, 5.0)
+  (4.185185185185185, 6.0)
+};
+\addlegendentry{{}{Li \& Ma tree (ours; PK-CCN)}}
+
+\addplot+[
+  only marks
+] coordinates {
+  (3.074074074074074, 1.0)
+  (3.2962962962962963, 2.0)
+  (3.0, 3.0)
+  (3.7777777777777777, 4.0)
+  (3.1481481481481484, 5.0)
+  (3.0, 6.0)
+};
+\addlegendentry{{}{Li \& Ma threshold (ours; PK-CCN)}}
+
+\addplot+[
+  only marks
+] coordinates {
+  (3.0, 1.0)
+  (3.074074074074074, 2.0)
+  (2.7777777777777777, 3.0)
+  (3.2962962962962963, 4.0)
+  (3.259259259259259, 5.0)
+  (2.888888888888889, 6.0)
+};
+\addlegendentry{{}{Menon et al. (2015; PK-CCN; F1 score)}}
+
+\addplot+[
+  only marks
+] coordinates {
+  (3.037037037037037, 1.0)
+  (2.925925925925926, 2.0)
+  (2.8518518518518516, 3.0)
+  (3.4074074074074074, 4.0)
+  (4.111111111111111, 5.0)
+  (2.8518518518518516, 6.0)
+};
+\addlegendentry{{}{Menon et al. (2015; CK-CCN; F1 score)}}
+
+\addplot+[
+  only marks
+] coordinates {
+  (4.925925925925926, 1.0)
+  (4.666666666666667, 2.0)
+  (4.666666666666667, 3.0)
+  (3.962962962962963, 4.0)
+  (3.740740740740741, 5.0)
+  (4.851851851851852, 6.0)
+};
+\addlegendentry{{}{Menon et al. (2015; CU-CCN; F1 score)}}
+
+\addplot+[
+  only marks
+] coordinates {
+  (4.592592592592593, 1.0)
+  (4.62962962962963, 2.0)
+  (4.851851851851852, 3.0)
+  (4.666666666666667, 4.0)
+  (5.555555555555555, 5.0)
+  (4.481481481481482, 6.0)
+};
+\addlegendentry{{}{Mithal et al. (2017; CU-CCN; G measure)}}
+
+\addplot+[
+  only marks
+] coordinates {
+  (5.666666666666667, 1.0)
+  (5.333333333333333, 2.0)
+  (5.703703703703703, 3.0)
+  (4.407407407407407, 4.0)
+  (4.333333333333333, 5.0)
+  (5.7407407407407405, 6.0)
+};
+\addlegendentry{{}{default (F1 score)}}
+
+\draw[semithick] ([yshift=2pt]axis cs:4.592592592592593, 1.375) -- ++(0pt, -2pt) -- (axis cs:4.925925925925926, 1.375) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:3.0, 1.625) -- ++(0pt, -2pt) -- (axis cs:4.592592592592593, 1.625) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:2.925925925925926, 2.375) -- ++(0pt, -2pt) -- (axis cs:4.074074074074074, 2.375) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:4.074074074074074, 2.625) -- ++(0pt, -2pt) -- (axis cs:5.333333333333333, 2.625) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:2.8518518518518516, 3.2727272727272725) -- ++(0pt, -2pt) -- (axis cs:4.666666666666667, 3.2727272727272725) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:2.7777777777777777, 3.4545454545454546) -- ++(0pt, -2pt) -- (axis cs:4.148148148148148, 3.4545454545454546) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:4.148148148148148, 3.6363636363636362) -- ++(0pt, -2pt) -- (axis cs:4.851851851851852, 3.6363636363636362) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:3.2962962962962963, 4.6) -- ++(0pt, -2pt) -- (axis cs:4.666666666666667, 4.6) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:3.740740740740741, 5.375) -- ++(0pt, -2pt) -- (axis cs:5.555555555555555, 5.375) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:3.1481481481481484, 5.625) -- ++(0pt, -2pt) -- (axis cs:4.333333333333333, 5.625) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:2.8518518518518516, 6.2727272727272725) -- ++(0pt, -2pt) -- (axis cs:4.185185185185185, 6.2727272727272725) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:4.185185185185185, 6.454545454545454) -- ++(0pt, -2pt) -- (axis cs:4.851851851851852, 6.454545454545454) -- ++(0pt, 2pt);
+
+\draw[semithick] ([yshift=2pt]axis cs:2.888888888888889, 6.636363636363637) -- ++(0pt, -2pt) -- (axis cs:4.481481481481482, 6.636363636363637) -- ++(0pt, 2pt);
+
+\end{axis}
+\end{tikzpicture}
+
