@@ -24,13 +24,11 @@ FACT_DL3=https://factdata.app.tu-dortmund.de/dl3/FACT-Tools/v1.1.2/open_crab_sam
 plots: results/cdd_f1.tex results/cdd_lima.tex results/cdd_accuracy.tex results/tables.pdf
 results/tables.pdf: results/tables.tex results/cdd_f1.tex results/cdd_lima.tex results/cdd_accuracy.tex
 	lualatex -interaction=nonstopmode -halt-on-error -output-directory $(dir $@) $<
-results/cdd_f1.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+results/cdd_f1.tex: cdd.jl $(IMBLEARN_EXPERIMENTS) Manifest.toml
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --average-table $(patsubst results/cdd_%,results/avg_%,$@) --dataset-table $(patsubst results/cdd_%,results/datasets_%,$@) --metric f1 $(IMBLEARN_EXPERIMENTS)
-results/cdd_DRAFT.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
-	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --average-table $(patsubst results/cdd_%,results/avg_%,$@) --dataset-table $(patsubst results/cdd_%,results/datasets_%,$@) --metric DRAFT --alpha 0.1 $(IMBLEARN_EXPERIMENTS)
-results/cdd_lima.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+results/cdd_lima.tex: cdd.jl $(IMBLEARN_EXPERIMENTS) Manifest.toml
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --average-table $(patsubst results/cdd_%,results/avg_%,$@) --dataset-table $(patsubst results/cdd_%,results/datasets_%,$@) --metric lima $(IMBLEARN_EXPERIMENTS)
-results/cdd_accuracy.tex: cdd.jl Manifest.toml $(IMBLEARN_EXPERIMENTS)
+results/cdd_accuracy.tex: cdd.jl $(IMBLEARN_EXPERIMENTS) Manifest.toml
 	julia --project=. $< --tex $@ --pdf $(patsubst %.tex,%.pdf,$@) --average-table $(patsubst results/cdd_%,results/avg_%,$@) --dataset-table $(patsubst results/cdd_%,results/datasets_%,$@) --metric accuracy $(IMBLEARN_EXPERIMENTS)
 Manifest.toml: Project.toml
 	julia --project=. --eval "using Pkg; Pkg.instantiate()"
@@ -76,26 +74,12 @@ results/imblearn_tree_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tre
 results/fact_test.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@ --n_repetitions 3 --is_test_run
 
-# inspection of the data sets
-results/inspect_datasets.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_datasets.py
-	venv/bin/python -m pkccn.experiments.inspect_datasets $@
-
-# inspection of method behavior
-results/inspect_objectives.pdf: results/inspect_objectives.tex results/inspect_objectives.csv
-	lualatex -interaction=nonstopmode -halt-on-error -output-directory $(dir $@) $<
-results/inspect_objectives.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_objectives.py
-	venv/bin/python -m pkccn.experiments.inspect_objectives $@ 0.5 0.1
-
-results/inspect_objectives_test.csv: venv/.EXPERIMENTS pkccn/experiments/inspect_objectives.py
-	venv/bin/python -m pkccn.experiments.inspect_objectives $@ 0.5 0.1 --is_test_run
-
 # data download
 data: $(DATA)
 data/fact_dl2.hdf5:
 	curl --fail --create-dirs --output $@ $(FACT_DL2)
 data/fact_dl3.hdf5:
 	curl --fail --create-dirs --output $@ $(FACT_DL3)
-
 
 # virtual environment
 venv/.EXPERIMENTS: venv/bin/pip setup.py

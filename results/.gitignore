@@ -1,7 +1,3 @@
 *.aux
-*.csv
 *.log
-*.pdf
-*.tex
-!*_main.tex
-!tables.tex
+*_test.csv

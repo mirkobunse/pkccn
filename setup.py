@@ -18,9 +18,9 @@ setup(
         'Development Status :: 3 - Alpha',
     ],
     keywords='machine-learning',
-    url='http://github.com/mirkobunse/pkccn',
-    author='Mirko Bunse',
-    author_email='mirko.bunse@cs.tu-dortmund.de',
+    url='ANONYMOUS',
+    author='ANONYMOUS',
+    author_email='ANONYMOUS',
     license='MIT',
     packages=setuptools.find_packages(),
     install_requires=[
