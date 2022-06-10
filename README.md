@@ -8,6 +8,12 @@ pip install .
 
 This package is part of our supplementary material for "Imbalanced Classification with Partially-Known Class-Conditional Label Noise", our submission to ICDM 2022.
 
+## Additional experimental results
+
+The supplementary results of our submission are given as PDF files in the `results/` directory.
+
+- [results/tables.pdf](https://anonymous.4open.science/api/repo/pkccn-5C53/file/results/tables.pdf): F1 scores and f_alpha scores for each individual combination of method, noise configuration, and data set.
+
 ## Usage
 
 To make any soft classifier from [scikit-learn](https://scikit-learn.org/stable/) CCN-aware, you only need to wrap it in a `ThresholdedClassifier`.
@@ -18,7 +24,7 @@ from pkccn import ThresholdedClassifier
 ccn_classifier = ThresholdedClassifier(
     sklearn_base_classifier, # e.g. LogisticRegression()
     method, # "lima", "menon", "mithal", or "default"
-    method_args = {"p_minus"=0.5, "verbose": True} # optional arguments
+    method_args = {"p_minus": 0.5, "verbose": True} # optional arguments
 )
 
 ccn_classifier.fit(X_train, y_train)
@@ -33,7 +39,7 @@ To make use of this feature, you need to specify `prediction_method="oob"` and a
 ccn_classifier = ThresholdedClassifier(
     RandomForestClassifier(oob_score=True),
     method,
-    prediction_method="oob"
+    prediction_method = "oob"
 )
 ```
 
