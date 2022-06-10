@@ -7,6 +7,7 @@ from multiprocessing import Pool
 from pkccn import lima_score, Threshold
 from pkccn.tree import LiMaRandomForest
 from fact.io import read_data as fact_read_data
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import LabelEncoder
@@ -49,6 +50,20 @@ def _extract_weak_labels(df, theta2_cut=0.025):
     group = group[is_labeled]
     return X, y_hat, group
 
+def _extract_sota_weak_labels(df, theta2_cut=0.025):
+    """Extract noisy On/Off region labels from a DataFrame."""
+    X = df[["gamma_prediction"]].values
+    theta_cut = np.sqrt(theta2_cut)
+    is_on = (df.theta_deg < theta_cut).values
+    is_off = pd.concat([df[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
+    is_labeled = np.logical_or(is_on, np.any(is_off, axis=1)) # only consider labeled instances
+    day = pd.to_datetime(df['timestamp_y'], unit="s").dt.dayofyear
+    group = LabelEncoder().fit_transform(day.values.reshape(-1, 1))
+    X = X[is_labeled]
+    y_hat = is_on[is_labeled] * 2 - 1
+    group = group[is_labeled]
+    return X, y_hat, group
+
 def _replace_on_position(dl3, off_position=1):
     """Replace the On region with one of the Off regions."""
     column = f"theta_deg_off_{off_position}"
@@ -70,6 +85,16 @@ def read_fact(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/f
     if fake_labels:
         dl3 = _replace_on_position(dl3)
     return _extract_weak_labels(dl3)
+def read_sota(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
+    dl3 = fact_read_data(dl3_path, "events")
+    dl2 = fact_read_data(dl2_path, "events")
+    dl3 = dl3.rename({"event_num": "event"}, axis='columns')
+    dl2 = dl2.rename({"event_num": "event"}, axis='columns')
+    dl3 = dl3.merge(dl2, on=["event", "night", "run_id"], how="inner")
+
+    if fake_labels:
+        dl3 = _replace_on_position(dl3)
+    return _extract_sota_weak_labels(dl3)
 
 def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
     """A single trial of fact.main()"""
@@ -80,8 +105,11 @@ def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
     thresholds = { m: [] for m in methods.keys() } # method name -> thresholds
     for i_trn, i_tst in GroupKFold(len(np.unique(group))).split(X, y_hat, group):
         clf.fit(X[i_trn,:], y_hat[i_trn])
-        y_trn = clf.oob_decision_function_[:,1]
-        y_tst = clf.predict_proba(X[i_tst,:])[:,1]
+        if hasattr(clf, "oob_decision_function_"):
+            y_trn = clf.oob_decision_function_[:,1]
+        else:
+            y_trn = clf.predict_proba(X[i_trn, :])[:,1]
+        y_tst = clf.predict_proba(X[i_tst, :])[:,1]
         for method_name, method in methods.items():
             threshold = method(y_hat[i_trn], y_trn)
             y_pred[method_name][i_tst] = (y_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
@@ -91,12 +119,22 @@ def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
     trial_results = []
     for method_name, y_method in y_pred.items():
         trial_results.append({
+            "classifier": type(clf).__name__,
             "method": method_name,
             "threshold": np.mean(thresholds[method_name]),
             "trial_seed": trial_seed,
             "lima": lima_score(y_hat, y_method, p_minus),
         })
     return trial_results
+
+class SotaClassifier(BaseEstimator, ClassifierMixin):
+    def fit(self, X, y):
+        return self
+    def predict_proba(self, X):
+        return np.stack((1-X[:, 0], X[:, 0])).T
+    def predict(self, X):
+        return self.predict_proba(X).argmax(axis=1)
+
 
 def main(
         output_path,
@@ -127,21 +165,33 @@ def main(
         "default (F1 score)":
             Threshold("default", metric="f1"),
     }
+
     clf = RandomForestClassifier(oob_score=True, max_depth=8)
+    sota_clf = SotaClassifier()
 
     # read the noisy data
     print("Loading the data...")
     X, y_hat, group = read_fact(fake_labels)
+    X_sota, _, _ = read_sota(fake_labels)
     print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
     # experiment with thresholding methods: parallelize over repetitions
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     with Pool() as pool:
+        trial_Xyg = partial(trial, methods=methods, clf=sota_clf, X=X_sota, y_hat=y_hat, group=group, p_minus=p_minus)
+        trial_results = tqdm(
+            pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
+            desc = f"Thresholding (Clean)",
+            total = n_repetitions,
+            ncols = 80
+        )
+        for result in trial_results:
+            results.extend(result)
         trial_Xyg = partial(trial, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group, p_minus=p_minus)
         trial_results = tqdm(
             pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
-            desc = f"Thresholding",
+            desc = f"Thresholding (Noisy)",
             total = n_repetitions,
             ncols = 80
         )
@@ -168,6 +218,7 @@ def main(
             y_pred[i_tst] = clf.predict(X[i_tst,:])
             thresholds.append(clf.threshold)
         results.append({
+            "classifier": type(clf).__name__,
             "method": "Li \& Ma tree (ours; PK-CCN)",
             "threshold": np.mean(thresholds),
             "trial_seed": trial_seed,
@@ -176,7 +227,7 @@ def main(
 
     # aggregate and store the results
     df = pd.DataFrame(results)
-    df = df.groupby("method", sort=False).agg(
+    df = df.groupby(["method", "classifier"], sort=False).agg(
         threshold = ("threshold", "mean"),
         threshold_std = ("threshold", "std"),
         lima = ("lima", "mean"),
