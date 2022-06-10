@@ -12,7 +12,7 @@ This package is part of our supplementary material for "Imbalanced Classificatio
 
 The supplementary results of our submission are given as PDF files in the `results/` directory.
 
-- [results/tables.pdf](https://anonymous.4open.science/api/repo/pkccn-5C53/file/results/tables.pdf): F1 scores and f_alpha scores for each individual combination of method, noise configuration, and data set.
+- <a href="https://anonymous.4open.science/api/repo/pkccn-5C53/file/results/tables.pdf" target="_blank">results/tables.pdf</a>: F1 scores and f_alpha scores for each individual combination of method, noise configuration, and data set.
 
 ## Usage
 
