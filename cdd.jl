@@ -133,11 +133,13 @@ function main(args = parse_commandline())
         groupby(vcat( # concatenate noise-wise average and overall average
             combine(
                 groupby(df, [:abbreviation, :p_minus, :p_plus]),
-                Symbol(args["metric"]) => DataFrames.mean => :mean
+                Symbol(args["metric"]) => DataFrames.mean => :mean,
+                Symbol(args["metric"]*"_std") => DataFrames.mean => :std
             ),
             combine(
                 groupby(df, :abbreviation),
                 Symbol(args["metric"]) => DataFrames.mean => :mean,
+                Symbol(args["metric"]*"_std") => DataFrames.mean => :std,
                 :p_minus => (x -> -1) => :p_minus, # dummy values
                 :p_plus => (x -> -1) => :p_plus
             )
@@ -145,9 +147,13 @@ function main(args = parse_commandline())
         :mean => (x -> x .== maximum(x)) => :is_best
     )
     average_scores[!,:mean_fmt] = format_score.(average_scores[!,:mean])
+    average_scores[!,:std_fmt] = format_score.(average_scores[!,:std])
     average_scores[!,:value] = .*(
         [x ? "\$\\mathbf{" : "\${" for x ∈ average_scores[!,:is_best]],
+        [x ? "\\hphantom{0}" : "" for x ∈ ((average_scores[!,:mean].<10).&(args["metric"]=="lima"))],
         average_scores[!,:mean_fmt],
+        "\\pm",
+        average_scores[!,:std_fmt],
         "}\$"
     ) # element-wise concatenation of strings
     average_scores[!,Symbol("noise configuration")] = .*(
