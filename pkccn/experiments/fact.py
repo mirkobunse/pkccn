@@ -162,17 +162,18 @@ def main(
         p_minus = 1 / 5
 
     # configure the thresholding methods
+    n_trials = is_test_run ? 10 : 1000 # trials in multi-start optimization
     methods = {
         "Li \& Ma threshold (ours; PK-CCN)":
-            Threshold("lima", n_trials=1000, p_minus=p_minus),
+            Threshold("lima", n_trials=n_trials, p_minus=p_minus),
         "Menon et al. (2015; PK-CCN; F1 score)":
-            Threshold("menon", n_trials=1000, metric="f1", p_minus=p_minus),
+            Threshold("menon", n_trials=n_trials, metric="f1", p_minus=p_minus),
         "Menon et al. (2015; CU-CCN; F1 score)":
-            Threshold("menon", n_trials=1000, metric="f1"),
+            Threshold("menon", n_trials=n_trials, metric="f1"),
         "Mithal et al. (2017; CU-CCN; G measure)":
-            Threshold("mithal", n_trials=1000),
+            Threshold("mithal", n_trials=n_trials),
         "default (F1 score)":
-            Threshold("default", n_trials=1000, metric="f1"),
+            Threshold("default", n_trials=n_trials, metric="f1"),
     }
 
     # CV validation on a single data set or use a given training test split?
