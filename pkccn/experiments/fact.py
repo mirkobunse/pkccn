@@ -58,15 +58,18 @@ def _replace_on_position(dl3, off_position=1):
     dl3[column] = np.inf # no event is considered in this region
     return dl3
 
-def read_fact(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
+def read_fact(dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5", fake_labels=False, no_open_nights=False):
     """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features."""
     dl3 = fact_read_data(dl3_path, "events")
     dl2 = fact_read_data(dl2_path, "events")
     dl3 = dl3.rename({"event_num": "event"}, axis='columns')
     dl2 = dl2.rename({"event_num": "event"}, axis='columns')
+    if no_open_nights:
+        dl3 = dl3[np.logical_not(dl3.night.between(20131101, 20131106))]
     dl3 = dl3.merge(dl2, on=["event", "night", "run_id"], how="inner")
     if fake_labels:
         dl3 = _replace_on_position(dl3)
+    print(f"Read {dl3.shape[0]} instances from {dl2_path}")
     dl3["area"] = dl3["width"] * dl3["length"] * np.pi
     dl3["log_size"] = np.log(dl3["size"])
     dl3["size_area"] = dl3["size"] / dl3["area"]
@@ -146,6 +149,7 @@ def main(
         seed = 867,
         n_repetitions = 20,
         fake_labels = False,
+        no_open_nights = False,
         is_test_run = False,
     ):
     print(f"Starting a fact experiment to produce {output_path} with seed {seed}")
@@ -175,8 +179,8 @@ def main(
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     if dl2_test_path is None and dl3_test_path is None: # CV validation
-        print("Loading the data...")
-        y_hat, group, X, X_sota = read_fact(fake_labels, dl2_path, dl3_path)
+        print("Loading the data from {dl2_path}")
+        y_hat, group, X, X_sota = read_fact(dl2_path, dl3_path, fake_labels)
         print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
         # experiment with thresholding methods: parallelize over repetitions
@@ -228,10 +232,10 @@ def main(
             })
 
     else: # training test split
-        print("Loading the training data...")
-        y_hat_trn, _, X_trn, X_sota_trn = read_fact(fake_labels, dl2_path, dl3_path)
-        print("Loading the test data...")
-        y_hat_tst, _, X_tst, X_sota_tst = read_fact(fake_labels, dl2_test_path, dl3_test_path)
+        print(f"Loading the training data from {dl2_path} (no_open_nights={no_open_nights})")
+        y_hat_trn, _, X_trn, X_sota_trn = read_fact(dl2_path, dl3_path, fake_labels, no_open_nights)
+        print(f"Loading the test data from {dl2_path}")
+        y_hat_tst, _, X_tst, X_sota_tst = read_fact(dl2_test_path, dl3_test_path, fake_labels)
         with Pool() as pool: # like above, but with trial_trn_tst
             trial_Xy = partial(trial_trn_tst, methods=methods, clf=SotaClassifier(), X_trn=X_sota_trn, y_hat_trn=y_hat_trn, X_tst=X_sota_tst, y_hat_tst=y_hat_tst, p_minus=p_minus)
             trial_results = tqdm(
@@ -300,6 +304,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_repetitions', type=int, default=20, metavar='N',
                         help='number of repetitions of the cross validation (default: 20)')
     parser.add_argument("--fake_labels", action="store_true")
+    parser.add_argument("--no_open_nights", action="store_true")
     parser.add_argument("--is_test_run", action="store_true")
     args = parser.parse_args()
     main(
@@ -311,5 +316,6 @@ if __name__ == '__main__':
         args.seed,
         args.n_repetitions,
         args.fake_labels,
+        args.no_open_nights,
         args.is_test_run,
     )
