@@ -179,7 +179,7 @@ def main(
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
     if dl2_test_path is None and dl3_test_path is None: # CV validation
-        print("Loading the data from {dl2_path}")
+        print(f"Loading the data from {dl2_path}")
         y_hat, group, X, X_sota = read_fact(dl2_path, dl3_path, fake_labels)
         print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
