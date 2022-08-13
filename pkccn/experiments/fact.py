@@ -164,15 +164,15 @@ def main(
     # configure the thresholding methods
     methods = {
         "Li \& Ma threshold (ours; PK-CCN)":
-            Threshold("lima", p_minus=p_minus),
+            Threshold("lima", n_trials=1000, p_minus=p_minus),
         "Menon et al. (2015; PK-CCN; F1 score)":
-            Threshold("menon", metric="f1", p_minus=p_minus),
+            Threshold("menon", n_trials=1000, metric="f1", p_minus=p_minus),
         "Menon et al. (2015; CU-CCN; F1 score)":
-            Threshold("menon", metric="f1"),
+            Threshold("menon", n_trials=1000, metric="f1"),
         "Mithal et al. (2017; CU-CCN; G measure)":
-            Threshold("mithal"),
+            Threshold("mithal", n_trials=1000),
         "default (F1 score)":
-            Threshold("default", metric="f1"),
+            Threshold("default", n_trials=1000, metric="f1"),
     }
 
     # CV validation on a single data set or use a given training test split?
