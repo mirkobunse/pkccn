@@ -83,7 +83,7 @@ data/fact_dl3.hdf5:
 
 # virtual environment
 venv/.EXPERIMENTS: venv/bin/pip setup.py
-	venv/bin/pip install .[experiments] && touch $@
+	venv/bin/pip install --no-binary=tables --no-binary=h5py .[experiments] && touch $@
 venv/bin/pip:
 	python -m venv venv
 

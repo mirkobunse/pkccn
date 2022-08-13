@@ -54,6 +54,7 @@ make
 in your terminal. To inspect the process without running it, call `make -n` (dry run). Our experiments have the following requirements:
 
 - Python 3.10
+- HDF5 (system-wide installation, e.g., `apt-get install libhdf5-dev`)
 - Julia 1.6 (optional, for plotting the CD diagrams)
 - LuaLaTeX (optional, for plotting the CD diagrams)
 - Docker (optional, if you prefer to install the above dependencies in an isolated container)

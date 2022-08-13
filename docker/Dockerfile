@@ -16,6 +16,7 @@ RUN pip install jill && \
         texlive \
         texlive-latex-extra \
         texlive-luatex \
+        libhdf5-dev \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
