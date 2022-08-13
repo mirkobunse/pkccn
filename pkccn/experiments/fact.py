@@ -36,23 +36,8 @@ FEATURES = [ # what to read from the FACT HDF5 files
     "area_size_cut_var"
 ]
 
-def _extract_weak_labels(df, theta2_cut=0.025):
+def _extract_weak_labels(X, df, theta2_cut=0.025):
     """Extract noisy On/Off region labels from a DataFrame."""
-    X = df[FEATURES].values
-    theta_cut = np.sqrt(theta2_cut)
-    is_on = (df.theta_deg < theta_cut).values
-    is_off = pd.concat([df[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
-    is_labeled = np.logical_or(is_on, np.any(is_off, axis=1)) # only consider labeled instances
-    day = pd.to_datetime(df['timestamp_y'], unit="s").dt.dayofyear
-    group = LabelEncoder().fit_transform(day.values.reshape(-1, 1))
-    X = X[is_labeled]
-    y_hat = is_on[is_labeled] * 2 - 1
-    group = group[is_labeled]
-    return X, y_hat, group
-
-def _extract_sota_weak_labels(df, theta2_cut=0.025):
-    """Extract noisy On/Off region labels from a DataFrame."""
-    X = df[["gamma_prediction"]].values
     theta_cut = np.sqrt(theta2_cut)
     is_on = (df.theta_deg < theta_cut).values
     is_off = pd.concat([df[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
@@ -71,30 +56,30 @@ def _replace_on_position(dl3, off_position=1):
     dl3[column] = np.inf # no event is considered in this region
     return dl3
 
-def read_fact(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
+def _read_fact(fake_labels, dl2_path, dl3_path):
     """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features."""
     dl3 = fact_read_data(dl3_path, "events")
     dl2 = fact_read_data(dl2_path, "events")
     dl3 = dl3.rename({"event_num": "event"}, axis='columns')
     dl2 = dl2.rename({"event_num": "event"}, axis='columns')
     dl3 = dl3.merge(dl2, on=["event", "night", "run_id"], how="inner")
+    if fake_labels:
+        dl3 = _replace_on_position(dl3)
+    return dl3
+
+def read_noisy(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
+    """Load real-world data with noisy labels."""
+    dl3 = _read_fact(fake_labels, dl2_path, dl3_path)
     dl3["area"] = dl3["width"] * dl3["length"] * np.pi
     dl3["log_size"] = np.log(dl3["size"])
     dl3["size_area"] = dl3["size"] / dl3["area"]
     dl3["area_size_cut_var"] = dl3["area"] / (dl3["log_size"] ** 2)
-    if fake_labels:
-        dl3 = _replace_on_position(dl3)
-    return _extract_weak_labels(dl3)
-def read_sota(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
-    dl3 = fact_read_data(dl3_path, "events")
-    dl2 = fact_read_data(dl2_path, "events")
-    dl3 = dl3.rename({"event_num": "event"}, axis='columns')
-    dl2 = dl2.rename({"event_num": "event"}, axis='columns')
-    dl3 = dl3.merge(dl2, on=["event", "night", "run_id"], how="inner")
+    return _extract_weak_labels(dl3[FEATURES].values, dl3)
 
-    if fake_labels:
-        dl3 = _replace_on_position(dl3)
-    return _extract_sota_weak_labels(dl3)
+def read_sota(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5"):
+    """Load real-world data with SOTA and noisy labels."""
+    dl3 = _read_fact(fake_labels, dl2_path, dl3_path)
+    return _extract_weak_labels(dl3[["gamma_prediction"]].values, dl3)
 
 def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
     """A single trial of fact.main()"""
@@ -171,7 +156,7 @@ def main(
 
     # read the noisy data
     print("Loading the data...")
-    X, y_hat, group = read_fact(fake_labels)
+    X, y_hat, group = read_noisy(fake_labels)
     X_sota, _, _ = read_sota(fake_labels)
     print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
