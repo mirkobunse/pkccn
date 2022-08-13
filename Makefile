@@ -75,6 +75,8 @@ results/confidential_mrk421.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(D
 	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk421_dl2.hdf5 --dl3_test_path data/mrk421_dl3.hdf5 $@
 results/confidential_mrk501.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk501_dl2.hdf5 data/mrk501_dl3.hdf5
 	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk501_dl2.hdf5 --dl3_test_path data/mrk501_dl3.hdf5 $@
+results/confidential_table.tex: venv/.EXPERIMENTS pkccn/experiments/generate_confidential_table.py results/fact.csv results/confidential_crab.csv
+	venv/bin/python -m pkccn.experiments.generate_confidential_table $@ results/fact.csv results/confidential_crab.csv
 
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
