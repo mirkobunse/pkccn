@@ -73,8 +73,8 @@ def read_fact(fake_labels=False, dl2_path="data/fact_dl2.hdf5", dl3_path="data/f
     dl3["area_size_cut_var"] = dl3["area"] / (dl3["log_size"] ** 2)
     return _extract_weak_labels(dl3, dl3[FEATURES].values, dl3[["gamma_prediction"]].values)
 
-def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
-    """A single trial of fact.main()"""
+def trial_cv(trial_seed, methods, clf, X, y_hat, group, p_minus):
+    """A single trial of fact.main() with group-aware cross-validation."""
     np.random.seed(trial_seed)
 
     # cross_val_predict, fitting a separate threshold in each fold
@@ -104,6 +104,30 @@ def trial(trial_seed, methods, clf, X, y_hat, group, p_minus):
         })
     return trial_results
 
+def trial_trn_tst(trial_seed, methods, clf, X_trn, y_hat_trn, X_tst, y_hat_tst, p_minus):
+    """A single trial of fact.main() with a single training test split."""
+    np.random.seed(trial_seed)
+    clf.fit(X_trn, y_hat_trn)
+    if hasattr(clf, "oob_decision_function_"):
+        y_trn = clf.oob_decision_function_[:,1]
+    else:
+        y_trn = clf.predict_proba(X_trn)[:,1]
+    y_tst = clf.predict_proba(X_tst)[:,1]
+
+    # evalute all thresholding methods
+    trial_results = []
+    for method_name, method in methods.items():
+        threshold = method(y_hat_trn, y_trn)
+        y_pred = (y_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
+        trial_results.append({
+            "classifier": type(clf).__name__,
+            "method": method_name,
+            "threshold": threshold,
+            "trial_seed": trial_seed,
+            "lima": lima_score(y_hat_tst, y_pred, p_minus),
+        })
+    return trial_results
+
 class SotaClassifier(BaseEstimator, ClassifierMixin):
     def fit(self, X, y):
         return self
@@ -117,6 +141,8 @@ def main(
         output_path,
         dl2_path = "data/fact_dl2.hdf5",
         dl3_path = "data/fact_dl3.hdf5",
+        dl2_test_path = None,
+        dl3_test_path = None,
         seed = 867,
         n_repetitions = 20,
         fake_labels = False,
@@ -131,7 +157,7 @@ def main(
     if fake_labels:
         p_minus = 1 / 5
 
-    # configure the thresholding methods and the base classifier
+    # configure the thresholding methods
     methods = {
         "Li \& Ma threshold (ours; PK-CCN)":
             Threshold("lima", p_minus=p_minus),
@@ -145,63 +171,106 @@ def main(
             Threshold("default", metric="f1"),
     }
 
-    clf = RandomForestClassifier(oob_score=True, max_depth=8)
-    sota_clf = SotaClassifier()
-
-    # read the noisy data
-    print("Loading the data...")
-    y_hat, group, X, X_sota = read_fact(fake_labels, dl2_path, dl3_path)
-    print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
-
-    # experiment with thresholding methods: parallelize over repetitions
+    # CV validation on a single data set or use a given training test split?
     results = []
     trial_seeds = np.random.randint(np.iinfo(np.uint32).max, size=n_repetitions)
-    with Pool() as pool:
-        trial_Xyg = partial(trial, methods=methods, clf=sota_clf, X=X_sota, y_hat=y_hat, group=group, p_minus=p_minus)
-        trial_results = tqdm(
-            pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
-            desc = f"Thresholding (Clean)",
-            total = n_repetitions,
-            ncols = 80
-        )
-        for result in trial_results:
-            results.extend(result)
-        trial_Xyg = partial(trial, methods=methods, clf=clf, X=X, y_hat=y_hat, group=group, p_minus=p_minus)
-        trial_results = tqdm(
-            pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
-            desc = f"Thresholding (Noisy)",
-            total = n_repetitions,
-            ncols = 80
-        )
-        for result in trial_results:
-            results.extend(result)
+    if dl2_test_path is None and dl3_test_path is None: # CV validation
+        print("Loading the data...")
+        y_hat, group, X, X_sota = read_fact(fake_labels, dl2_path, dl3_path)
+        print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
-    # experiment with the Li&Ma tree: parallelize over ensemble members
-    clf = LiMaRandomForest(p_minus, max_depth=8, n_jobs=-1)
-    if is_test_run:
-        clf.max_depth = 2
-        clf.n_estimators = 32
-    progressbar = tqdm(
-        trial_seeds, # use the same seeds as above
-        desc = f"Li & Ma tree",
-        total = n_repetitions,
-        ncols = 80
-    )
-    for trial_seed in progressbar:
-        np.random.seed(trial_seed)
-        y_pred = np.zeros_like(y_hat)
-        thresholds = []
-        for i_trn, i_tst in GroupKFold(len(np.unique(group))).split(X, y_hat, group):
-            clf.fit(X[i_trn,:], y_hat[i_trn])
-            y_pred[i_tst] = clf.predict(X[i_tst,:])
-            thresholds.append(clf.threshold)
-        results.append({
-            "classifier": type(clf).__name__,
-            "method": "Li \& Ma tree (ours; PK-CCN)",
-            "threshold": np.mean(thresholds),
-            "trial_seed": trial_seed,
-            "lima": lima_score(y_hat, y_pred, p_minus),
-        })
+        # experiment with thresholding methods: parallelize over repetitions
+        with Pool() as pool:
+            trial_Xyg = partial(trial_cv, methods=methods, clf=SotaClassifier(), X=X_sota, y_hat=y_hat, group=group, p_minus=p_minus)
+            trial_results = tqdm(
+                pool.imap(trial_Xyg, trial_seeds), # each trial gets a different seed
+                desc = f"Thresholding (Clean)",
+                total = n_repetitions,
+                ncols = 80
+            )
+            for result in trial_results:
+                results.extend(result)
+            trial_Xyg = partial(trial_cv, methods=methods, clf=RandomForestClassifier(oob_score=True, max_depth=8), X=X, y_hat=y_hat, group=group, p_minus=p_minus)
+            trial_results = tqdm(
+                pool.imap(trial_Xyg, trial_seeds),
+                desc = f"Thresholding (Noisy)",
+                total = n_repetitions,
+                ncols = 80
+            )
+            for result in trial_results:
+                results.extend(result)
+
+        # experiment with the Li&Ma tree: parallelize over ensemble members
+        clf = LiMaRandomForest(p_minus, max_depth=8, n_jobs=-1)
+        if is_test_run:
+            clf.max_depth = 2
+            clf.n_estimators = 32
+        progressbar = tqdm(
+            trial_seeds, # use the same seeds as above
+            desc = f"Li & Ma tree",
+            total = n_repetitions,
+            ncols = 80
+        )
+        for trial_seed in progressbar:
+            np.random.seed(trial_seed)
+            y_pred = np.zeros_like(y_hat)
+            thresholds = []
+            for i_trn, i_tst in GroupKFold(len(np.unique(group))).split(X, y_hat, group):
+                clf.fit(X[i_trn,:], y_hat[i_trn])
+                y_pred[i_tst] = clf.predict(X[i_tst,:])
+                thresholds.append(clf.threshold)
+            results.append({
+                "classifier": type(clf).__name__,
+                "method": "Li \& Ma tree (ours; PK-CCN)",
+                "threshold": np.mean(thresholds),
+                "trial_seed": trial_seed,
+                "lima": lima_score(y_hat, y_pred, p_minus),
+            })
+
+    else: # training test split
+        print("Loading the training data...")
+        y_hat_trn, _, X_trn, X_sota_trn = read_fact(fake_labels, dl2_path, dl3_path)
+        print("Loading the test data...")
+        y_hat_tst, _, X_tst, X_sota_tst = read_fact(fake_labels, dl2_test_path, dl3_test_path)
+        with Pool() as pool: # like above, but with trial_trn_tst
+            trial_Xy = partial(trial_trn_tst, methods=methods, clf=SotaClassifier(), X_trn=X_sota_trn, y_hat_trn=y_hat_trn, X_tst=X_sota_tst, y_hat_tst=y_hat_tst, p_minus=p_minus)
+            trial_results = tqdm(
+                pool.imap(trial_Xy, trial_seeds),
+                desc = f"Thresholding (Clean)",
+                total = n_repetitions,
+                ncols = 80
+            )
+            for result in trial_results:
+                results.extend(result)
+            trial_Xy = partial(trial_trn_tst, methods=methods, clf=RandomForestClassifier(oob_score=True, max_depth=8), X_trn=X_trn, y_hat_trn=y_hat_trn, X_tst=X_tst, y_hat_tst=y_hat_tst, p_minus=p_minus)
+            trial_results = tqdm(
+                pool.imap(trial_Xy, trial_seeds),
+                desc = f"Thresholding (Noisy)",
+                total = n_repetitions,
+                ncols = 80
+            )
+            for result in trial_results:
+                results.extend(result)
+        clf = LiMaRandomForest(p_minus, max_depth=8, n_jobs=-1)
+        if is_test_run:
+            clf.max_depth = 2
+            clf.n_estimators = 32
+        progressbar = tqdm(
+            trial_seeds, # use the same seeds as above
+            desc = f"Li & Ma tree",
+            total = n_repetitions,
+            ncols = 80
+        )
+        for trial_seed in progressbar:
+            np.random.seed(trial_seed)
+            clf.fit(X_trn, y_hat_trn)
+            results.append({
+                "classifier": type(clf).__name__,
+                "method": "Li \& Ma tree (ours; PK-CCN)",
+                "threshold": clf.threshold,
+                "trial_seed": trial_seed,
+                "lima": lima_score(y_hat_tst, clf.predict(X_tst), p_minus),
+            })
 
     # aggregate and store the results
     df = pd.DataFrame(results)
@@ -222,6 +291,10 @@ if __name__ == '__main__':
                         help='path of an input DL2 *.hdf5 file')
     parser.add_argument('--dl3_path', type=str, default="data/fact_dl3.hdf5",
                         help='path of an input DL3 *.hdf5 file')
+    parser.add_argument('--dl2_test_path', type=str, default=None,
+                        help='optional path of a DL2 test *.hdf5 file')
+    parser.add_argument('--dl3_test_path', type=str, default=None,
+                        help='optional path of a DL3 test *.hdf5 file')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
                         help='random number generator seed (default: 876)')
     parser.add_argument('--n_repetitions', type=int, default=20, metavar='N',
@@ -233,6 +306,8 @@ if __name__ == '__main__':
         args.output_path,
         args.dl2_path,
         args.dl3_path,
+        args.dl2_test_path,
+        args.dl3_test_path,
         args.seed,
         args.n_repetitions,
         args.fake_labels,

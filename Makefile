@@ -66,6 +66,16 @@ results/fact.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 results/fact_fake.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@ --fake_labels
 
+# results with confidential FACT data
+CONFIDENTIAL_DATA = data/crab_mnoethe_dl2.hdf5 data/crab_mnoethe_dl3.hdf5
+confidential: results/confidential_crab.csv results/confidential_mrk421.csv results/confidential_mrk501.csv
+results/confidential_crab.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA)
+	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/fact_dl2.hdf5 --dl3_test_path data/fact_dl3.hdf5 $@
+results/confidential_mrk421.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk421_dl2.hdf5 data/mrk421_dl3.hdf5
+	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk421_dl2.hdf5 --dl3_test_path data/mrk421_dl3.hdf5 $@
+results/confidential_mrk501.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk501_dl2.hdf5 data/mrk501_dl3.hdf5
+	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk501_dl2.hdf5 --dl3_test_path data/mrk501_dl3.hdf5 $@
+
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
 	venv/bin/python -m pkccn.experiments.imblearn $@ 0.5 0.1 --n_folds 2 --n_repetitions 3 --is_test_run
@@ -73,6 +83,8 @@ results/imblearn_tree_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn_tre
 	venv/bin/python -m pkccn.experiments.imblearn_tree $@ 0.5 0.1 --n_folds 2 --n_repetitions 3 --is_test_run
 results/fact_test.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@ --n_repetitions 3 --is_test_run
+results/fact_mrk421_test.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
+	venv/bin/python -m pkccn.experiments.fact $@ --n_repetitions 3 --dl2_test_path data/mrk421_dl2.hdf5 --dl3_test_path data/mrk421_dl3.hdf5 --is_test_run
 
 # data download
 data: $(DATA)
@@ -87,4 +99,4 @@ venv/.EXPERIMENTS: venv/bin/pip setup.py
 venv/bin/pip:
 	python -m venv venv
 
-.PHONY: plots experiments data
+.PHONY: plots experiments confidential data
