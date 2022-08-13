@@ -123,6 +123,8 @@ class SotaClassifier(BaseEstimator, ClassifierMixin):
 
 def main(
         output_path,
+        dl2_path = "data/fact_dl2.hdf5",
+        dl3_path = "data/fact_dl3.hdf5",
         seed = 867,
         n_repetitions = 20,
         fake_labels = False,
@@ -156,8 +158,8 @@ def main(
 
     # read the noisy data
     print("Loading the data...")
-    X, y_hat, group = read_noisy(fake_labels)
-    X_sota, _, _ = read_sota(fake_labels)
+    X, y_hat, group = read_noisy(fake_labels, dl2_path, dl3_path)
+    X_sota, _, _ = read_sota(fake_labels, dl2_path, dl3_path)
     print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
 
     # experiment with thresholding methods: parallelize over repetitions
@@ -225,6 +227,8 @@ def main(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('output_path', type=str, help='path of an output *.csv file')
+    parser.add_argument('--dl2_path', type=str, help='path of an input DL2 *.hdf5 file')
+    parser.add_argument('--dl3_path', type=str, help='path of an input DL3 *.hdf5 file')
     parser.add_argument('--seed', type=int, default=876, metavar='N',
                         help='random number generator seed (default: 876)')
     parser.add_argument('--n_repetitions', type=int, default=20, metavar='N',
@@ -234,6 +238,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(
         args.output_path,
+        args.dl2_path,
+        args.dl3_path,
         args.seed,
         args.n_repetitions,
         args.fake_labels,
