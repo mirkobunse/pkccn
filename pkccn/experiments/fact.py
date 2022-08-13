@@ -162,7 +162,7 @@ def main(
         p_minus = 1 / 5
 
     # configure the thresholding methods
-    n_trials = is_test_run ? 10 : 1000 # trials in multi-start optimization
+    n_trials = 10 if is_test_run else 1000 # trials in multi-start optimization
     methods = {
         "Li \& Ma threshold (ours; PK-CCN)":
             Threshold("lima", n_trials=n_trials, p_minus=p_minus),
