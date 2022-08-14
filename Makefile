@@ -15,10 +15,10 @@ FACT_EXPERIMENTS = \
     results/fact.csv \
     results/fact_fake.csv
 DATA = \
-    data/fact_dl2.hdf5 \
-    data/fact_dl3.hdf5
-FACT_DL2=https://factdata.app.tu-dortmund.de/dl2/FACT-Tools/v1.1.2/open_crab_sample_facttools_dl2.hdf5
-FACT_DL3=https://factdata.app.tu-dortmund.de/dl3/FACT-Tools/v1.1.2/open_crab_sample_dl3.hdf5
+    data/crab_precuts.hdf5 \
+    data/crab_dl3.hdf5
+
+all: plots experiments
 
 # plot CD diagrams in Julia
 plots: results/cdd_f1.tex results/cdd_lima.tex results/cdd_accuracy.tex results/tables.pdf
@@ -70,7 +70,7 @@ results/fact_fake.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 CONFIDENTIAL_DATA = data/crab_mnoethe_dl2.hdf5 data/crab_mnoethe_dl3.hdf5
 confidential: results/confidential_crab.csv results/confidential_mrk421.csv results/confidential_mrk501.csv
 results/confidential_crab.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA)
-	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/fact_dl2.hdf5 --dl3_test_path data/fact_dl3.hdf5 --no_open_nights $@
+	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/crab_precuts.hdf5 --dl3_test_path data/crab_dl3.hdf5 --no_open_nights $@
 results/confidential_mrk421.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk421_dl2.hdf5 data/mrk421_dl3.hdf5
 	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk421_dl2.hdf5 --dl3_test_path data/mrk421_dl3.hdf5 $@
 results/confidential_mrk501.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk501_dl2.hdf5 data/mrk501_dl3.hdf5
@@ -87,13 +87,6 @@ results/fact_test.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@ --n_repetitions 3 --is_test_run
 results/fact_mrk421_test.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@ --n_repetitions 3 --dl2_test_path data/mrk421_dl2.hdf5 --dl3_test_path data/mrk421_dl3.hdf5 --is_test_run
-
-# data download
-data: $(DATA)
-data/fact_dl2.hdf5:
-	curl --fail --create-dirs --output $@ $(FACT_DL2)
-data/fact_dl3.hdf5:
-	curl --fail --create-dirs --output $@ $(FACT_DL3)
 
 # virtual environment
 venv/.EXPERIMENTS: venv/bin/pip setup.py

@@ -42,8 +42,7 @@ def _extract_weak_labels(df, *args, theta2_cut=0.025):
     is_on = (df.theta_deg < theta_cut).values
     is_off = pd.concat([df[f'theta_deg_off_{i}'] < theta_cut for i in range(1, 6)], axis=1).values
     is_labeled = np.logical_or(is_on, np.any(is_off, axis=1)) # only consider labeled instances
-    day = pd.to_datetime(df['timestamp_y'], unit="s").dt.dayofyear
-    group = LabelEncoder().fit_transform(day.values.reshape(-1, 1))
+    group = LabelEncoder().fit_transform(df['night'].values.reshape(-1, 1))
     y_hat = is_on[is_labeled] * 2 - 1
     group = group[is_labeled]
     outputs = []
@@ -58,7 +57,7 @@ def _replace_on_position(dl3, off_position=1):
     dl3[column] = np.inf # no event is considered in this region
     return dl3
 
-def read_fact(dl2_path="data/fact_dl2.hdf5", dl3_path="data/fact_dl3.hdf5", fake_labels=False, no_open_nights=False):
+def read_fact(dl2_path="data/crab_precuts.hdf5", dl3_path="data/crab_dl3.hdf5", fake_labels=False, no_open_nights=False):
     """Load real-world data. Joins DL2 and DL3 files and computes auxiliary features."""
     dl3 = fact_read_data(dl3_path, "events")
     dl2 = fact_read_data(dl2_path, "events")
@@ -142,8 +141,8 @@ class SotaClassifier(BaseEstimator, ClassifierMixin):
 
 def main(
         output_path,
-        dl2_path = "data/fact_dl2.hdf5",
-        dl3_path = "data/fact_dl3.hdf5",
+        dl2_path = "data/crab_precuts.hdf5",
+        dl3_path = "data/crab_dl3.hdf5",
         dl2_test_path = None,
         dl3_test_path = None,
         seed = 867,
@@ -182,7 +181,7 @@ def main(
     if dl2_test_path is None and dl3_test_path is None: # CV validation
         print(f"Loading the data from {dl2_path}")
         y_hat, group, X, X_sota = read_fact(dl2_path, dl3_path, fake_labels)
-        print(f"Read the data of {len(np.unique(group))} days to cross-validate over")
+        print(f"Read the data of {len(np.unique(group))} nights to cross-validate over")
 
         # experiment with thresholding methods: parallelize over repetitions
         with Pool() as pool:
@@ -292,9 +291,9 @@ def main(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('output_path', type=str, help='path of an output *.csv file')
-    parser.add_argument('--dl2_path', type=str, default="data/fact_dl2.hdf5",
+    parser.add_argument('--dl2_path', type=str, default="data/crab_precuts.hdf5",
                         help='path of an input DL2 *.hdf5 file')
-    parser.add_argument('--dl3_path', type=str, default="data/fact_dl3.hdf5",
+    parser.add_argument('--dl3_path', type=str, default="data/crab_dl3.hdf5",
                         help='path of an input DL3 *.hdf5 file')
     parser.add_argument('--dl2_test_path', type=str, default=None,
                         help='optional path of a DL2 test *.hdf5 file')

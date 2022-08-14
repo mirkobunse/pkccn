@@ -5,7 +5,7 @@ from fact.io import read_data as fact_read_data
 from pkccn import lima_score, lima_threshold
 
 # read DL3 data with gamma predictions
-dl3 = fact_read_data("pkccn/tests/crab_dl3.hdf5", "events") # obtain crab_dl3 from https://github.com/fact-project/open_crab_sample_analysis
+dl3 = fact_read_data("data/crab_dl3.hdf5", "events") # obtain crab_dl3 from https://github.com/fact-project/open_crab_sample_analysis
 y_dl3 = dl3["gamma_prediction"].values
 
 # read "on" and "off" annotations
