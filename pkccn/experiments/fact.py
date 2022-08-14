@@ -119,7 +119,7 @@ def trial_trn_tst(trial_seed, methods, clf, X_trn, y_hat_trn, X_tst, y_hat_tst, 
     # evalute all thresholding methods
     trial_results = []
     for method_name, method in methods.items():
-        threshold = method(y_hat_trn, y_trn)
+        threshold = method(y_hat_tst, y_tst)
         y_pred = (y_tst > threshold).astype(int) * 2 - 1 # in [-1, 1]
         trial_results.append({
             "classifier": type(clf).__name__,
