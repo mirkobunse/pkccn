@@ -15,7 +15,7 @@ def main(
     with open(output_path, "w") as f:
         print("\\begin{tabular}{lccc}", file=f)
         print("  \\toprule", file=f)
-        print("  \\makecell[lc]{method} & \\makecell{CCN labels\\\\(open)} & \\makecell{CCN labels\\\\(closed)} & \\makecell{clean labels\\\\(SOTA)} \\\\", file=f)
+        print("  \\makecell[lc]{method} & \\makecell{CCN labels\\\\(open; CV)} & \\makecell{CCN labels\\\\(closed)} & \\makecell{clean labels\\\\(SOTA)} \\\\", file=f)
         print("  \\midrule", file=f)
         for m in [
                 "Li \& Ma tree (ours; PK-CCN)",
