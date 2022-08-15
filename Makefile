@@ -13,7 +13,7 @@ IMBLEARN_EXPERIMENTS = \
     results/imblearn_natarajan_inverse.csv
 FACT_EXPERIMENTS = \
     results/fact.csv \
-    results/fact_fake.csv
+    results/fact_fake.tex
 DATA = \
     data/crab_precuts.hdf5 \
     data/crab_dl3.hdf5
@@ -63,6 +63,8 @@ results/imblearn_tree_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments
 
 results/fact.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@
+results/fact_fake.tex: results/fact_fake.csv venv/.EXPERIMENTS pkccn/experiments/generate_fake_table.py
+	venv/bin/python -m pkccn.experiments.generate_fake_table $@ $<
 results/fact_fake.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@ --fake_labels
 
