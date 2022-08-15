@@ -26,14 +26,12 @@ def main(
                 "default (F1 score)"
                 ]:
             df_open = df_fact[(df_fact["method"]==m) & ( # select CCN open data outcome
-                (df_fact["classifier"]=="LiMaForestClassifier") |
                 (df_crab["classifier"]=="LiMaRandomForest") |
                 (df_fact["classifier"]=="RandomForestClassifier")
             )]
             if len(df_open) != 1: # make sure everything works alright
                 print(f"df_open (len {len(df_open)}); m = {m}")
             df_closed = df_crab[(df_crab["method"]==m) & ( # select CCN closed data outcome
-                (df_crab["classifier"]=="LiMaForestClassifier") |
                 (df_crab["classifier"]=="LiMaRandomForest") |
                 (df_crab["classifier"]=="RandomForestClassifier")
             )]

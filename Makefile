@@ -68,15 +68,17 @@ results/fact_fake.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 
 # results with confidential FACT data
 CONFIDENTIAL_DATA = data/crab_mnoethe_dl2.hdf5 data/crab_mnoethe_dl3.hdf5
-confidential: results/confidential_crab.csv results/confidential_mrk421.csv results/confidential_mrk501.csv
+confidential: results/confidential_table.tex results/confidential_mrk421.tex results/confidential_mrk501.tex
+results/confidential_table.tex: venv/.EXPERIMENTS pkccn/experiments/generate_confidential_table.py results/confidential_crab.csv results/fact.csv
+	venv/bin/python -m pkccn.experiments.generate_confidential_table $@ results/fact.csv results/confidential_crab.csv
+results/confidential_mrk%.tex: results/confidential_mrk%.csv venv/.EXPERIMENTS pkccn/experiments/generate_mrk_table.py
+	venv/bin/python -m pkccn.experiments.generate_mrk_table $@ $<
 results/confidential_crab.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA)
 	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/crab_precuts.hdf5 --dl3_test_path data/crab_dl3.hdf5 --no_open_nights $@
 results/confidential_mrk421.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk421_dl2.hdf5 data/mrk421_dl3.hdf5
 	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk421_dl2.hdf5 --dl3_test_path data/mrk421_dl3.hdf5 $@
 results/confidential_mrk501.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA) $(CONFIDENTIAL_DATA) data/mrk501_dl2.hdf5 data/mrk501_dl3.hdf5
 	venv/bin/python -m pkccn.experiments.fact --dl2_path data/crab_mnoethe_dl2.hdf5 --dl3_path data/crab_mnoethe_dl3.hdf5 --dl2_test_path data/mrk501_dl2.hdf5 --dl3_test_path data/mrk501_dl3.hdf5 $@
-results/confidential_table.tex: venv/.EXPERIMENTS pkccn/experiments/generate_confidential_table.py results/fact.csv results/confidential_crab.csv
-	venv/bin/python -m pkccn.experiments.generate_confidential_table $@ results/fact.csv results/confidential_crab.csv
 
 # test runs of the experiments
 results/imblearn_test.csv: venv/.EXPERIMENTS pkccn/experiments/imblearn.py
