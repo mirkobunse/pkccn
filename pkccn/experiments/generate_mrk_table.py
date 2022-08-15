@@ -49,4 +49,4 @@ if __name__ == '__main__':
     parser.add_argument('output_path', type=str, help='path of an output *.csv file')
     parser.add_argument('mrk_path', type=str, help='path of an input *.csv file')
     args = parser.parse_args()
-    main(args.output_path, args.fact_path, args.mrk_path)
+    main(args.output_path, args.mrk_path)
