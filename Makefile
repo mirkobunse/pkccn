@@ -1,4 +1,5 @@
-TABLE_ARGS=""
+# use TABLE_ARGS for the "--thesis" argument of generate_fact_table
+TABLE_ARGS=
 IMBLEARN_EXPERIMENTS = \
     results/imblearn_tree_low.csv \
     results/imblearn_tree_high.csv \
@@ -65,7 +66,7 @@ results/imblearn_tree_natarajan_inverse.csv: venv/.EXPERIMENTS pkccn/experiments
 results/fact.tex: results/fact.csv venv/.EXPERIMENTS pkccn/experiments/generate_fact_table.py
 	venv/bin/python -m pkccn.experiments.generate_fact_table $(TABLE_ARGS) --cv $< $@
 results/fact_fake.tex: results/fact_fake.csv venv/.EXPERIMENTS pkccn/experiments/generate_fact_table.py
-	venv/bin/python -m pkccn.experiments.generate_fact_table $(TABLE_ARGS) --no_bold $< $@
+	venv/bin/python -m pkccn.experiments.generate_fact_table $(TABLE_ARGS) --cv --no_bold $< $@
 results/fact.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
 	venv/bin/python -m pkccn.experiments.fact $@
 results/fact_fake.csv: venv/.EXPERIMENTS pkccn/experiments/fact.py $(DATA)
