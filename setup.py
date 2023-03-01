@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='pkccn',
-    version='0.0.1',
+    version='0.0.2',
     description='Algorithms for learning under partially-known class-conditional label noise',
     long_description=readme(),
     classifiers=[

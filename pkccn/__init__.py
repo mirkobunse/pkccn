@@ -136,6 +136,12 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
     """
     if metric == "accuracy":
         threshold = 0.5
+        if verbose:
+            print(
+                f"┌ default_threshold={threshold}",
+                f"└─ metric=accuracy",
+                sep="\n"
+            )
     elif metric == "f1": # no closed-form solution; optimization is necessary
         p = np.sum(y_hat == 1) / len(y_hat) # class 1 prevalence
         threshold, value, is_success = _minimize(
@@ -153,15 +159,23 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
                 f" └ f1={-value}",
                 sep="\n"
             )
-        return threshold
-    else:
-        raise ValueError(f"metric=\"{metric}\" not in [\"accuracy\", \"f1\"]")
-    if verbose:
-        print(
-            f"┌ default_threshold={threshold}",
-            f"└─ metric={metric}",
-            sep="\n"
+    elif callable(metric):
+        threshold, value, is_success = _minimize(
+            metric,
+            n_trials,
+            random_state,
+            args = (y_hat, y_pred)
         )
+        if not is_success:
+            print(f"WARNING: optimization of custom metric was not successful")
+        if verbose:
+            print(
+                f"┌ default_threshold={threshold}",
+                f"└─ metric(default_threshold)={value}",
+                sep="\n"
+            )
+    else:
+        raise ValueError(f"metric=\"{metric}\" not in [\"accuracy\", \"f1\", a_callable_loss]")
     return threshold
 
 def _f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):

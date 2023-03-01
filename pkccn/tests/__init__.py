@@ -1,7 +1,7 @@
 import numpy as np
 from imblearn.datasets import fetch_datasets
 from fact.analysis.statistics import li_ma_significance
-from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier
+from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier, _f1_objective
 from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
 from pkccn.tree import _depth, LiMaRandomForest
@@ -88,6 +88,21 @@ class TestOptimizations(TestCase):
 
             # compare with a numerically optimized threshold (efficient)
             t = Threshold("default", metric="f1", random_state=RANDOM_STATE)(y_true, y_pred)
+            f1_t = sklearn_f1_score(y_true, (y_pred > t).astype(int) * 2 - 1)
+            if f1_T[best_i] > f1_t:
+                self.assertAlmostEqual(f1_T[best_i], f1_t) # compare scores
+
+            # pretend we wanted to use a custom metric
+            t = Threshold(
+                "default",
+                metric = lambda threshold_, y_hat_, y_pred_: _f1_objective(
+                    threshold_,
+                    y_hat_,
+                    y_pred_,
+                    np.sum(y_hat_ == 1) / len(y_hat_)
+                ),
+                random_state = RANDOM_STATE
+            )(y_true, y_pred)
             f1_t = sklearn_f1_score(y_true, (y_pred > t).astype(int) * 2 - 1)
             if f1_T[best_i] > f1_t:
                 self.assertAlmostEqual(f1_T[best_i], f1_t) # compare scores
