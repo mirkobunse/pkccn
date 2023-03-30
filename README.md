@@ -3,7 +3,7 @@
 This package implements various algorithms for handling class-conditional label noise (CCN), also in cases where the class-wise noise rates are partially known.
 
 ```
-pip install .
+pip install 'pkccn @ git+https://github.com/mirkobunse/pkccn'
 ```
 
 This package is part of our supplementary material for "Imbalanced Classification with Partially-Known Class-Conditional Label Noise", our submission to ICDM 2022.

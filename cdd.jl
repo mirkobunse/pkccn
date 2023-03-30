@@ -61,7 +61,8 @@ abbreviate_method_name(x) = # abbreviate the name for a table of average scores
         x # return x without abbreviating
     end
 
-format_score(x; i=1) = try @sprintf("%.3f", x)[i:end] catch; "" end
+format_f1(x) = try @sprintf("%.3f", x)[2:end] catch; "" end
+format_lima(x) = try @sprintf("%.2f", x) catch; "" end
 
 function save_table(output_path, df)
     @info "Exporting a LaTeX table to $(output_path)"
@@ -128,6 +129,7 @@ function main(args = parse_commandline())
     end
 
     # print a table of average scores (Tab. 1)
+    format_score = if args["metric"] == "lima" format_lima else format_f1 end
     df[!,:abbreviation] = abbreviate_method_name.(df[!,:method])
     average_scores = transform(
         groupby(vcat( # concatenate noise-wise average and overall average
@@ -156,20 +158,20 @@ function main(args = parse_commandline())
         average_scores[!,:std_fmt],
         "}\$"
     ) # element-wise concatenation of strings
-    average_scores[!,Symbol("noise configuration")] = .*(
-        "\$p_-=",
+    average_scores[!,Symbol("\$(p_-, p_+)\$")] = .*(
+        "\$(",
         string.(average_scores[!,:p_minus]),
-        ", \\, p_+=",
+        ", ",
         string.(average_scores[!,:p_plus]),
-        "\$",
+        ")\$",
     )
     average_scores = unstack( # unstack from long to wide format
         average_scores,
-        Symbol("noise configuration"), # rows
+        Symbol("\$(p_-, p_+)\$"), # rows
         :abbreviation, # columns
         :value
     )
-    average_scores[end,Symbol("noise configuration")] = "overall average"
+    average_scores[end,Symbol("\$(p_-, p_+)\$")] = "avg."
     if args["average-table"] != nothing
         save_table(args["average-table"], average_scores)
     end
@@ -183,8 +185,8 @@ function main(args = parse_commandline())
         ), [:dataset, :p_minus, :p_plus]),
         :mean => (x -> x .== maximum(x)) => :is_best
     )
-    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean]; i=1+(args["metric"]!="lima"))
-    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std]; i=1+(args["metric"]!="lima"))
+    dataset_scores[!,:mean_fmt] = format_score.(dataset_scores[!,:mean])
+    dataset_scores[!,:std_fmt] = format_score.(dataset_scores[!,:std])
     dataset_scores[!,:value] = .*(
         [x ? "\$\\mathbf{" : "\${" for x ∈ dataset_scores[!,:is_best]],
         dataset_scores[!,:mean_fmt],
