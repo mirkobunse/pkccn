@@ -234,8 +234,10 @@ def main(
     else: # training test split
         print(f"Loading the training data from {dl2_path} (no_open_nights={no_open_nights})")
         y_hat_trn, _, X_trn, X_sota_trn = read_fact(dl2_path, dl3_path, fake_labels, no_open_nights)
+        print(f"Loaded {len(y_hat_trn)} training instances")
         print(f"Loading the test data from {dl2_path}")
         y_hat_tst, _, X_tst, X_sota_tst = read_fact(dl2_test_path, dl3_test_path, fake_labels)
+        print(f"Loaded {len(y_hat_tst)} testing instances")
         with Pool() as pool: # like above, but with trial_trn_tst
             trial_Xy = partial(trial_trn_tst, methods=methods, clf=SotaClassifier(), X_trn=X_sota_trn, y_hat_trn=y_hat_trn, X_tst=X_sota_tst, y_hat_tst=y_hat_tst, p_minus=p_minus)
             trial_results = tqdm(

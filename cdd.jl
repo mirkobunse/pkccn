@@ -131,23 +131,43 @@ function main(args = parse_commandline())
     # print a table of average scores (Tab. 1)
     format_score = if args["metric"] == "lima" format_lima else format_f1 end
     df[!,:abbreviation] = abbreviate_method_name.(df[!,:method])
-    average_scores = transform(
-        groupby(vcat( # concatenate noise-wise average and overall average
-            combine(
-                groupby(df, [:abbreviation, :p_minus, :p_plus]),
-                Symbol(args["metric"]) => DataFrames.mean => :mean,
-                Symbol(args["metric"]*"_std") => DataFrames.mean => :std
-            ),
-            combine(
-                groupby(df, :abbreviation),
-                Symbol(args["metric"]) => DataFrames.mean => :mean,
-                Symbol(args["metric"]*"_std") => DataFrames.mean => :std,
-                :p_minus => (x -> -1) => :p_minus, # dummy values
-                :p_plus => (x -> -1) => :p_plus
-            )
-        ), [:p_minus, :p_plus]),
-        :mean => (x -> x .== maximum(x)) => :is_best
+    average_scores = vcat(
+        transform(
+            groupby(vcat( # concatenate noise-wise average and overall average
+                combine(
+                    groupby(df[df[!,:abbreviation] .!= "Menon\\\\CK/F1", :], [:abbreviation, :p_minus, :p_plus]),
+                    Symbol(args["metric"]) => DataFrames.mean => :mean,
+                    Symbol(args["metric"]*"_std") => DataFrames.mean => :std
+                ),
+                combine(
+                    groupby(df[df[!,:abbreviation] .!= "Menon\\\\CK/F1", :], :abbreviation),
+                    Symbol(args["metric"]) => DataFrames.mean => :mean,
+                    Symbol(args["metric"]*"_std") => DataFrames.mean => :std,
+                    :p_minus => (x -> -1) => :p_minus, # dummy values
+                    :p_plus => (x -> -1) => :p_plus
+                )
+            ), [:p_minus, :p_plus]),
+            :mean => (x -> x .== maximum(x)) => :is_best
+        ),
+        transform(
+            groupby(vcat( # concatenate noise-wise average and overall average
+                combine(
+                    groupby(df[df[!,:abbreviation] .== "Menon\\\\CK/F1", :], [:abbreviation, :p_minus, :p_plus]),
+                    Symbol(args["metric"]) => DataFrames.mean => :mean,
+                    Symbol(args["metric"]*"_std") => DataFrames.mean => :std
+                ),
+                combine(
+                    groupby(df[df[!,:abbreviation] .== "Menon\\\\CK/F1", :], :abbreviation),
+                    Symbol(args["metric"]) => DataFrames.mean => :mean,
+                    Symbol(args["metric"]*"_std") => DataFrames.mean => :std,
+                    :p_minus => (x -> -1) => :p_minus, # dummy values
+                    :p_plus => (x -> -1) => :p_plus
+                )
+            ), [:p_minus, :p_plus]),
+            :mean => (x -> false) => :is_best
+        )
     )
+
     average_scores[!,:mean_fmt] = format_score.(average_scores[!,:mean])
     average_scores[!,:std_fmt] = format_score.(average_scores[!,:std])
     average_scores[!,:value] = .*(
@@ -172,6 +192,7 @@ function main(args = parse_commandline())
         :value
     )
     average_scores[end,Symbol("\$(p_-, p_+)\$")] = "avg."
+    average_scores = average_scores[:, [1,3,2,4,5,6,7,8]] # reorder columns
     if args["average-table"] != nothing
         save_table(args["average-table"], average_scores)
     end
