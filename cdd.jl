@@ -97,7 +97,6 @@ function main(args = parse_commandline())
     # select CDD methods based on the desired metric
     metric = args["metric"]
     styles = [
-        "{tu03,mark=triangle*}", # Li & Ma tree
         "{tu01,mark=*}", # Li & Ma threshold
         "{tu02,mark=diamond*}", # Menon PK-CCN
         "{tu02,mark=diamond,semithick,densely dotted}", # Menon CK-CCN
@@ -131,6 +130,7 @@ function main(args = parse_commandline())
     # print a table of average scores (Tab. 1)
     format_score = if args["metric"] == "lima" format_lima else format_f1 end
     df[!,:abbreviation] = abbreviate_method_name.(df[!,:method])
+    df = df[df[!,:abbreviation] .!= "Li\\&Ma\\\\tree", :] # ignore the LiMa tree
     average_scores = vcat(
         transform(
             groupby(vcat( # concatenate noise-wise average and overall average
@@ -192,7 +192,6 @@ function main(args = parse_commandline())
         :value
     )
     average_scores[end,Symbol("\$(p_-, p_+)\$")] = "avg."
-    average_scores = average_scores[:, [1,3,2,4,5,6,7,8]] # reorder columns
     if args["average-table"] != nothing
         save_table(args["average-table"], average_scores)
     end
@@ -246,7 +245,7 @@ function main(args = parse_commandline())
             p_plus = "$(p_plus)\\hphantom{0}" # left-align tick marks
         end
         title = "\$p_- = $(p_minus), \\, p_+ = $(p_plus)\$"
-        pairs = CriticalDifferenceDiagrams._to_pairs(
+        pairs = CriticalDifferenceDiagrams.to_pairs(
             gdf,
             :method,  # the name of the treatment column
             :dataset, # the name of the observation column
@@ -257,6 +256,7 @@ function main(args = parse_commandline())
     plot = CriticalDifferenceDiagrams.plot( # generate the 2D diagram
         sequence...;
         maximize_outcome = true,
+        adjustment = :bonferroni,
         alpha = args["alpha"]
     )
 
