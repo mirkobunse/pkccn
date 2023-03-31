@@ -3,20 +3,18 @@
 This package implements various algorithms for handling class-conditional label noise (CCN), also in cases where the class-wise noise rates are partially known.
 
 ```
-pip install 'pkccn @ git+https://github.com/mirkobunse/pkccn'
+pip install .
 ```
 
-This package is part of our supplementary material for "Imbalanced Classification with Partially-Known Class-Conditional Label Noise", our submission to ICDM 2022.
+This package is part of our supplementary material for "Class-Conditional Label Noise in Astroparticle Physics", our submission to ECML-PKDD 2023.
 
-## Additional experimental results
+## Experimental Results
 
 The supplementary results of our submission are given as PDF files in the `results/` directory.
 
-- <a href="https://anonymous.4open.science/api/repo/pkccn-5C53/file/results/tables.pdf" target="_blank">results/tables.pdf</a>: F1 scores and f_alpha scores for each individual combination of method, noise configuration, and data set.
-
 ## Usage
 
-To make any soft classifier from [scikit-learn](https://scikit-learn.org/stable/) CCN-aware, you only need to wrap it in a `ThresholdedClassifier`.
+To make any soft classifier (i.e., scoring function) from [scikit-learn](https://scikit-learn.org/stable/) CCN-aware, you only need to wrap it in a `ThresholdedClassifier`.
 
 ```python
 from pkccn import ThresholdedClassifier
