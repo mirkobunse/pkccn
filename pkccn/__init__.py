@@ -69,6 +69,23 @@ def f1_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=Non
         raise ValueError(f"if y_pred is None, set both p_minus and p_plus or none of them")
     return -_f1_objective(0, y_true, y_threshold, pi, alpha, beta)
 
+def precision_score(y_true, y_threshold, y_pred=None, quantiles=[.01, .99], p_minus=None, p_plus=None):
+    """Precision scoring function with CCN support."""
+    alpha = None
+    beta = None
+    pi = sum(y_true == 1) / len(y_true)
+    if y_pred is not None:
+        pi_corr, pi, alpha, beta, eta_min, eta_max = _menon_quantities(
+            y_true, y_pred, quantiles, p_minus, p_plus
+        ) # estimate all quantities from y_pred
+    elif p_minus is not None and p_plus is not None:
+        pi_corr, pi, alpha, beta, eta_min, eta_max = _menon_quantities(
+            y_true, y_threshold, quantiles, p_minus, p_plus
+        ) # define the quantities from p_minus and p_plus (ignore quantiles)
+    elif p_minus is not None or p_plus is not None:
+        raise ValueError(f"if y_pred is None, set both p_minus and p_plus or none of them")
+    return -_precision_objective(0, y_true, y_threshold, pi, alpha, beta)
+
 def g_score(y_true, y_threshold):
     """The G-measure is the geometric mean of precision and recall"""
     return np.sqrt(precision_score(y_true, y_threshold, zero_division=0) * recall_score(y_true, y_threshold))
@@ -159,6 +176,23 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
                 f" └ f1={-value}",
                 sep="\n"
             )
+    elif metric == "precision": # no closed-form solution; optimization is necessary
+        p = np.sum(y_hat == 1) / len(y_hat) # class 1 prevalence
+        threshold, value, is_success = _minimize(
+            _precision_objective,
+            n_trials,
+            random_state,
+            args = (y_hat, y_pred, p)
+        )
+        if not is_success:
+            print(f"WARNING: precision optimization in default_threshold was not successful")
+        if verbose:
+            print(
+                f"┌ default_threshold={threshold}",
+                f"└┬ p={p}",
+                f" └ precision={-value}",
+                sep="\n"
+            )
     elif callable(metric):
         threshold, value, is_success = _minimize(
             metric,
@@ -190,6 +224,19 @@ def _f1_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
         u = 1 - (alpha*(1-v) + (1-beta)*(1-u) - alpha) / (1-alpha-beta)
     f = 2 * p * u / (p + (p*u + (1-p)*(1-v))) # Tab. 1 in [narasimhan2014statistical]
     return -f # maximize the function value
+
+def _precision_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
+    """Objective function for default_threshold with metric="precision"."""
+    y_pred = (y_pred > threshold).astype(int) * 2 - 1
+    u = recall_score(y_hat, y_pred, pos_label=1) # u = TPR
+    v = recall_score(y_hat, y_pred, pos_label=-1) # v = TNR
+    if alpha is not None or beta is not None: # Sec. A.3 in [menon2015learning]
+        if alpha + beta == 1:
+            raise ValueError(f"Adaptation undefined for alpha={alpha} + beta={beta} == 1")
+        v = 1 - ((1-alpha)*(1-v) + beta*(1-u) - beta) / (1-alpha-beta)
+        u = 1 - (alpha*(1-v) + (1-beta)*(1-u) - alpha) / (1-alpha-beta)
+    f = p*u / (p*u + (1-p)*(1-v)) # see [narasimhan2014statistical]
+    return -np.clip(f, 0, 1) # maximize the (clipped) function value
 
 def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_trials=100, random_state=None, p_minus=None, p_plus=None, verbose=False):
     """Determine a clean-optimal decision threshold from noisy labels, using the proposal by
@@ -233,6 +280,15 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
     elif metric == "f1": # no closed-form solution; optimization is necessary
         threshold, value, is_success = _minimize(
             _f1_objective,
+            n_trials,
+            random_state,
+            args = (y_hat, y_pred, pi, alpha, beta)
+        )
+        if not is_success:
+            print(f"WARNING: f1 optimization in menon_threshold was not successful")
+    elif metric == "precision": # no closed-form solution; optimization is necessary
+        threshold, value, is_success = _minimize(
+            _precision_objective,
             n_trials,
             random_state,
             args = (y_hat, y_pred, pi, alpha, beta)

@@ -1,12 +1,20 @@
 import numpy as np
 from imblearn.datasets import fetch_datasets
 from fact.analysis.statistics import li_ma_significance
-from pkccn import f1_score, lima_score, Threshold, ThresholdedClassifier, _f1_objective
+from pkccn import (
+    f1_score,
+    lima_score,
+    precision_score,
+    Threshold,
+    ThresholdedClassifier,
+    _f1_objective
+)
 from pkccn.experiments import MLPClassifier
 from pkccn.data import inject_ccn
 from pkccn.tree import _depth, LiMaRandomForest
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score as sklearn_f1_score
+from sklearn.metrics import precision_score as sklearn_precision_score
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import train_test_split
 from unittest import TestCase
@@ -54,14 +62,24 @@ class TestObjectives(TestCase):
         # print(f"p_+={p_plus}, p_-={p_minus}")
 
         for threshold in rng.rand(20):
+            # clean F1 score
             y_threshold = (y_pred > threshold).astype(int) * 2 - 1
             theirs = sklearn_f1_score(y_true, y_threshold)
             ours = f1_score(y_true, y_threshold)
-            self.assertAlmostEqual(theirs, ours) # clean labels
+            self.assertAlmostEqual(theirs, ours) # clean labels (f1)
 
             # F1 under label noise
             menon = f1_score(y_hat, y_threshold, p_minus=p_minus, p_plus=p_plus)
-            self.assertAlmostEqual(ours, menon, delta=.05) # noisy labels
+            self.assertAlmostEqual(ours, menon, delta=.05) # noisy labels (f1)
+
+            # clean precision
+            theirs = sklearn_precision_score(y_true, y_threshold)
+            ours = precision_score(y_true, y_threshold)
+            self.assertAlmostEqual(theirs, ours) # clean labels (prec)
+
+            # precision under label noise
+            menon = precision_score(y_hat, y_threshold, p_minus=p_minus, p_plus=p_plus)
+            self.assertAlmostEqual(ours, menon, delta=.05) # noisy labels (prec)
 
             # lima_score (ours) vs li_ma_significance (gamma ray astronomy)
             alpha = p_minus / (1 - p_minus)
@@ -137,7 +155,11 @@ class TestThresholdedClassifier(TestCase):
         clf.fit(X_trn, y_trn)
         accuracy = clf.score(X_tst, y_tst)
         f1 = sklearn_f1_score(y_tst, clf.predict(X_tst))
-        print(f"method=\"{method}\" achieves CCN accuracy={accuracy:.3f}, f1={f1:.3f}")
+        precision = sklearn_precision_score(y_tst, clf.predict(X_tst))
+        print(
+            f"method=\"{method}\" achieves CCN accuracy={accuracy:.3f},",
+            f"f1={f1:.3f}, prec={precision:.3f}"
+        )
     def test_lima(self):
         self._test_method(
             "lima",
@@ -157,10 +179,20 @@ class TestThresholdedClassifier(TestCase):
             "menon",
             method_args = {"metric": "f1"}
         )
+    def test_menon_precision(self):
+        self._test_method(
+            "menon",
+            method_args = {"metric": "precision"}
+        )
     def test_ckccn_menon_f1(self):
         self._test_method(
             "menon",
             method_args = {"metric": "f1", "p_minus": .5, "p_plus": .1}
+        )
+    def test_ckccn_menon_precision(self):
+        self._test_method(
+            "menon",
+            method_args = {"metric": "precision", "p_minus": .5, "p_plus": .1}
         )
     def test_pkccn_menon(self):
         self._test_method(
