@@ -239,7 +239,10 @@ def _precision_objective(threshold, y_hat, y_pred, p, alpha=None, beta=None):
             raise ValueError(f"Adaptation undefined for alpha={alpha} + beta={beta} == 1")
         v = 1 - ((1-alpha)*(1-v) + beta*(1-u) - beta) / (1-alpha-beta)
         u = 1 - (alpha*(1-v) + (1-beta)*(1-u) - alpha) / (1-alpha-beta)
-    f = p*u / (p*u + (1-p)*(1-v)) # see [narasimhan2014statistical]
+    f = p*u + (1-p)*(1-v) # denominator
+    if f == 0 or not np.isfinite(f):
+        return 0.
+    f = p*u / f # see [narasimhan2014statistical]
     return -np.clip(f, 0, 1) # maximize the (clipped) function value
 
 def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_trials=100, random_state=None, p_minus=None, p_plus=None, verbose=False):
