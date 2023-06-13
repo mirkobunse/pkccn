@@ -110,6 +110,7 @@ def lima_threshold(y_hat, y_pred, p_minus=None, n_trials=100, random_state=None,
         _lima_objective,
         n_trials,
         random_state,
+        bounds = _bounds(y_pred),
         args = (y_hat, y_pred, alpha)
     )
     score = np.sqrt(-2*value) # objective function value to lima_score
@@ -165,6 +166,7 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
             _f1_objective,
             n_trials,
             random_state,
+            bounds = _bounds(y_pred),
             args = (y_hat, y_pred, p)
         )
         if not is_success:
@@ -182,6 +184,7 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
             _precision_objective,
             n_trials,
             random_state,
+            bounds = _bounds(y_pred),
             args = (y_hat, y_pred, p)
         )
         if not is_success:
@@ -198,6 +201,7 @@ def default_threshold(y_hat, y_pred, metric="accuracy", n_trials=100, random_sta
             metric,
             n_trials,
             random_state,
+            bounds = _bounds(y_pred),
             args = (y_hat, y_pred)
         )
         if not is_success:
@@ -282,6 +286,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
             _f1_objective,
             n_trials,
             random_state,
+            bounds = _bounds(y_pred),
             args = (y_hat, y_pred, pi, alpha, beta)
         )
         if not is_success:
@@ -291,6 +296,7 @@ def menon_threshold(y_hat, y_pred, metric="accuracy", quantiles=[.01, .99], n_tr
             _precision_objective,
             n_trials,
             random_state,
+            bounds = _bounds(y_pred),
             args = (y_hat, y_pred, pi, alpha, beta)
         )
         if not is_success:
@@ -358,6 +364,7 @@ def mithal_threshold(y_hat, y_pred, quantile=.05, n_trials=100, random_state=Non
         _mithal_objective,
         n_trials,
         random_state,
+        bounds = _bounds(y_pred),
         args = (y_hat, y_pred, beta)
     )
 
@@ -447,7 +454,7 @@ def _yao_t_matrix(y_pred, filter_outlier=True):
             T[i, j] = y_pred[idx_best, j]
     return T
 
-def _minimize(objective, n_trials, rng, args=None):
+def _minimize(objective, n_trials, rng, bounds=(0.0, 1.0), args=None):
     """Generic multi-start minimization of an objective function for thresholding."""
     if rng is None:
         rng = np.random.random.__self__ # global RNG, seeded by np.random.seed
@@ -455,7 +462,7 @@ def _minimize(objective, n_trials, rng, args=None):
         rng = np.random.RandomState(rng) # local RNG with fixed seed
     best = optimize.minimize_scalar(
         objective,
-        bounds = (0.0, 1.0),
+        bounds = bounds,
         method = "bounded",
         args = args
     ) # minimize_scalar is the best approach if only one local minimum exists
@@ -463,10 +470,15 @@ def _minimize(objective, n_trials, rng, args=None):
         current = optimize.minimize(
             objective,
             rng.rand(), # random starting point
-            bounds = ((0.0,1.0),),
+            bounds = (bounds,),
             args = args
         ) # otherwise, we need multi-start optimization with minimize
         if current.success and (best is None or not best.success or best.fun > current.fun):
             best = current
     threshold = np.array(best.x).item() # safely convert best.x to a scalar
     return (threshold, best.fun, best.success)
+
+def _bounds(y_pred):
+    """Return bounds for the minimization, which ensure that no constant prediction is made."""
+    x = np.unique(y_pred)
+    return (x[0]+x[1])/2, (x[-1]+x[-2])/2 # interpolate smallest and largest predictions
