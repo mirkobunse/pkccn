@@ -1,16 +1,16 @@
-# pkccn
+# pkccn | partially-known CCN
 
-This package implements various algorithms for handling class-conditional label noise (CCN), also in cases where the class-wise noise rates are partially known.
+This package implements various machine learning algorithms for handling class-conditional label noise (CCN), also in cases where the class-wise noise rates are partially known.
 
 ```
 pip install .
 ```
 
-This package is part of our supplementary material for "Class-Conditional Label Noise in Astroparticle Physics", our submission to ECML-PKDD 2023.
+This package is part of our supplementary material for "Class-Conditional Label Noise in Astroparticle Physics", our publication at ECML-PKDD 2023.
 
-## Experimental Results
+## Supplementary material: formal proofs and additional results
 
-The supplementary results of our submission are given as PDF files in the `results/` directory.
+You find the 4-page supplement of our publication in the [`supplement.pdf`](supplement.pdf) file. The results of additional experiments are placed in the `results/` directory.
 
 ## Usage
 
@@ -43,7 +43,7 @@ ccn_classifier = ThresholdedClassifier(
 
 ## Experiments
 
-Experiments are handled with GNU Make. To run them locally, just call
+Experiments are best executed through GNU Make. To run them locally, just call
 
 ```
 make
